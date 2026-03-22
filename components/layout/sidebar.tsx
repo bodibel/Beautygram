@@ -69,7 +69,7 @@ export function Sidebar() {
   return (
     <>
       <aside
-        className="hidden lg:flex flex-col w-[280px] flex-shrink-0 sticky top-[80px] self-start h-[calc(100vh-5rem)] overflow-y-auto gap-3 py-4 px-3"
+        className="hidden lg:flex flex-col w-[280px] flex-shrink-0 sticky top-[80px] self-start h-[calc(100vh-5rem)] overflow-y-auto gap-3 py-4 px-3 bg-surface rounded-2xl border border-border shadow-sm"
         style={{ zIndex: "var(--z-sidebar)" }}
       >
         {/* ── Nav links (salon / admin context) ── */}
@@ -224,7 +224,7 @@ export function Sidebar() {
 
         {/* ── Inline Filter Panel (main context) ── */}
         {showFilterPanel && (
-          <div className="rounded-2xl bg-surface border border-border shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
+          <div className="overflow-hidden flex flex-col flex-1 min-h-0">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
               <span className="text-sm font-semibold text-foreground">Szűrők</span>
@@ -286,7 +286,7 @@ export function Sidebar() {
         )}
 
         {/* ── User card — bottom ── */}
-        <div className="flex-shrink-0 rounded-2xl bg-surface border border-border shadow-sm p-3">
+        <div className="flex-shrink-0 rounded-xl border border-border p-3">
           {userData ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 p-2 rounded-xl bg-secondary">
