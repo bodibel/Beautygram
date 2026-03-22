@@ -96,11 +96,11 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-5xl p-0 overflow-hidden border-none bg-white rounded-3xl shadow-2xl">
+            <DialogContent className="max-w-5xl p-0 overflow-hidden border-none bg-surface rounded-3xl shadow-2xl">
                 <DialogTitle className="sr-only">Bejegyzés: {post.author.name}</DialogTitle>
                 <div className="flex flex-col lg:flex-row h-[80vh]">
                     {/* Left side: Image */}
-                    <div className="relative w-full lg:w-3/5 bg-gray-100 min-h-[300px]">
+                    <div className="relative w-full lg:w-3/5 bg-muted min-h-[300px]">
                         {images.length > 0 ? (
                             <>
                                 <Image
@@ -115,7 +115,7 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                                         <div className="absolute inset-y-0 left-0 flex items-center pl-4">
                                             <button
                                                 onClick={() => setCurrentImageIndex(prev => (prev === 0 ? images.length - 1 : prev - 1))}
-                                                className="bg-white/80 hover:bg-white text-gray-900 rounded-full p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-110"
+                                                className="bg-white/80 hover:bg-white text-foreground rounded-full p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-110"
                                             >
                                                 <ChevronLeft className="h-6 w-6" />
                                             </button>
@@ -123,7 +123,7 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                                         <div className="absolute inset-y-0 right-0 flex items-center pr-4">
                                             <button
                                                 onClick={() => setCurrentImageIndex(prev => (prev === images.length - 1 ? 0 : prev + 1))}
-                                                className="bg-white/80 hover:bg-white text-gray-900 rounded-full p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-110"
+                                                className="bg-white/80 hover:bg-white text-foreground rounded-full p-2 shadow-lg backdrop-blur-sm transition-all hover:scale-110"
                                             >
                                                 <ChevronRight className="h-6 w-6" />
                                             </button>
@@ -144,7 +144,7 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                                 )}
                             </>
                         ) : (
-                            <div className="text-gray-300 flex flex-col items-center gap-2">
+                            <div className="text-muted-foreground flex flex-col items-center gap-2">
                                 <LayoutGrid className="h-12 w-12" />
                                 <span className="text-sm font-bold uppercase tracking-widest">Nincs kép</span>
                             </div>
@@ -162,9 +162,9 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                     </div>
 
                     {/* Right side: Info */}
-                    <div className="flex flex-col w-full lg:w-2/5 border-l border-gray-100 bg-white">
+                    <div className="flex flex-col w-full lg:w-2/5 border-l border-border bg-surface">
                         {/* Header */}
-                        <div className="p-6 border-b border-gray-50">
+                        <div className="p-6 border-b border-border">
                             <div className="flex items-center justify-between mb-4">
                                 <Link href={`/profile/${post.author.id}`} className="flex items-center gap-3">
                                     <div className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-primary/10 p-0.5">
@@ -173,7 +173,7 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                                         </div>
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-gray-900 leading-tight">{post.author.name}</span>
+                                        <span className="font-bold text-foreground leading-tight">{post.author.name}</span>
                                         <span className="text-xs text-primary font-medium">{post.author.role}</span>
                                     </div>
                                 </Link>
@@ -185,19 +185,19 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                         </div>
 
                         {/* Content area: scrollable */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-gray-200">
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-border">
                             <div className="space-y-4">
-                                <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                                     {post.content}
                                 </p>
-                                <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
+                                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
                                     {new Date(post.createdAt).toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric' })}
                                 </span>
                             </div>
 
                             {/* Section for comments */}
-                            <div className="pt-4 border-t border-gray-50">
-                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
+                            <div className="pt-4 border-t border-border">
+                                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">
                                     Hozzászólások ({comments.length})
                                 </h4>
 
@@ -205,10 +205,10 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                                     <div className="space-y-4 animate-pulse">
                                         {[1, 2].map(i => (
                                             <div key={i} className="flex gap-3">
-                                                <div className="h-8 w-8 rounded-full bg-gray-100 shrink-0" />
+                                                <div className="h-8 w-8 rounded-full bg-muted shrink-0" />
                                                 <div className="space-y-1 flex-1">
-                                                    <div className="h-3 w-24 bg-gray-50 rounded" />
-                                                    <div className="h-3 w-full bg-gray-50 rounded" />
+                                                    <div className="h-3 w-24 bg-muted rounded" />
+                                                    <div className="h-3 w-full bg-muted rounded" />
                                                 </div>
                                             </div>
                                         ))}
@@ -217,7 +217,7 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                                     <div className="space-y-4">
                                         {comments.map((comment) => (
                                             <div key={comment.id} className="flex gap-3 group/comment">
-                                                <div className="relative h-8 w-8 rounded-full overflow-hidden shrink-0 border border-gray-100">
+                                                <div className="relative h-8 w-8 rounded-full overflow-hidden shrink-0 border border-border">
                                                     <Image
                                                         src={comment.user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user.name || "User")}&background=random`}
                                                         alt={comment.user.name || "User"}
@@ -227,12 +227,12 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 mb-0.5">
-                                                        <span className="text-xs font-bold text-gray-900">{comment.user.name}</span>
-                                                        <span className="text-[10px] text-gray-400">
+                                                        <span className="text-xs font-bold text-foreground">{comment.user.name}</span>
+                                                        <span className="text-[10px] text-muted-foreground">
                                                             {new Date(comment.createdAt).toLocaleDateString('hu-HU')}
                                                         </span>
                                                     </div>
-                                                    <p className="text-xs text-gray-600 leading-relaxed break-words">
+                                                    <p className="text-xs text-muted-foreground leading-relaxed break-words">
                                                         {comment.content}
                                                     </p>
                                                 </div>
@@ -241,14 +241,14 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                                     </div>
                                 ) : (
                                     <div className="text-center py-4">
-                                        <p className="text-xs text-gray-400 italic">Még nincsenek hozzászólások. Legyél te az első!</p>
+                                        <p className="text-xs text-muted-foreground italic">Még nincsenek hozzászólások. Legyél te az első!</p>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Footer interactions / Comment input */}
-                        <div className="p-4 border-t border-gray-50 bg-white">
+                        <div className="p-4 border-t border-border bg-surface">
                             <div className="flex items-center justify-between mb-4 px-2">
                                 <div className="flex items-center gap-6">
                                     <button
@@ -258,15 +258,15 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                                         }}
                                         className="group flex items-center gap-1.5 transition-colors"
                                     >
-                                        <Heart className={cn("h-5 w-5 transition-transform group-hover:scale-110", isLiked ? "fill-primary text-primary" : "text-gray-400")} />
-                                        <span className="text-xs font-bold text-gray-500">{post.likes + (isLiked && !post.isLiked ? 1 : (!isLiked && post.isLiked ? -1 : 0))}</span>
+                                        <Heart className={cn("h-5 w-5 transition-transform group-hover:scale-110", isLiked ? "fill-primary text-primary" : "text-muted-foreground")} />
+                                        <span className="text-xs font-bold text-muted-foreground">{post.likes + (isLiked && !post.isLiked ? 1 : (!isLiked && post.isLiked ? -1 : 0))}</span>
                                     </button>
-                                    <div className="flex items-center gap-1.5 text-gray-400">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
                                         <MessageCircle className="h-5 w-5" />
                                         <span className="text-xs font-bold">{comments.length}</span>
                                     </div>
                                 </div>
-                                <Share2 className="h-5 w-5 text-gray-400 cursor-pointer hover:text-gray-600 transition-colors" />
+                                <Share2 className="h-5 w-5 text-muted-foreground cursor-pointer hover:text-muted-foreground transition-colors" />
                             </div>
 
                             <form onSubmit={handleAddComment} className="relative flex items-center gap-2">
@@ -277,12 +277,12 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                                         value={newComment}
                                         onChange={(e) => setNewComment(e.target.value)}
                                         disabled={isSubmitting}
-                                        className="w-full bg-gray-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-gray-400"
+                                        className="w-full bg-muted border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-muted-foreground"
                                     />
                                     <button
                                         type="submit"
                                         disabled={!newComment.trim() || isSubmitting}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-primary disabled:text-gray-300 font-bold text-sm transition-colors"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-primary disabled:text-muted-foreground font-bold text-sm transition-colors"
                                     >
                                         Küldés
                                     </button>
