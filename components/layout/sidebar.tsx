@@ -286,7 +286,7 @@ export function Sidebar() {
         )}
 
         {/* ── User card — bottom ── */}
-        <div className="flex-shrink-0 rounded-xl border border-border p-3">
+        <div className="flex-shrink-0 -mx-3 -mb-4 px-3 pb-4 pt-3 border-t border-border bg-secondary rounded-b-2xl">
           {userData ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 p-2 rounded-xl bg-secondary">
