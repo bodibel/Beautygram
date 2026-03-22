@@ -19,7 +19,7 @@ export function TopBar() {
   return (
     <>
       <header
-        className="sticky top-0 w-full rounded-none border-b bg-white dark:bg-[#1C1410] border-border"
+        className="sticky top-0 w-full rounded-none border-b bg-white dark:bg-[#161B22] border-border"
         style={{ zIndex: "var(--z-topbar)" }}
       >
         <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-4 px-0">
