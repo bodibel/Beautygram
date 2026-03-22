@@ -3,6 +3,7 @@
 
 import { revalidatePath } from "next/cache"
 import prisma from "@/lib/db"
+import { generateUniqueSlug } from "@/lib/slug"
 import { Salon, Service, OpeningHour, ClosedDate, Post } from "@/lib/salon-types"
 import { requireSession } from "@/lib/auth-utils"
 import {
@@ -250,9 +251,11 @@ export async function createSalon(data: any) {
         : "EUR"
 
     try {
+        const slug = await generateUniqueSlug(data.name, prisma)
         const salon = await prisma.salon.create({
             data: {
                 name: data.name,
+                slug,
                 country: data.country || "Magyarország",
                 city: data.city,
                 district: data.district || null,
@@ -374,6 +377,7 @@ export async function getFeaturedSalons({
         const select = {
             id: true,
             name: true,
+            slug: true,
             profileImage: true,
             categories: true,
             city: true,
@@ -421,6 +425,7 @@ export async function getRecentSalons(limit = 4) {
             select: {
                 id: true,
                 name: true,
+                slug: true,
                 profileImage: true,
                 categories: true,
                 city: true,
@@ -433,11 +438,11 @@ export async function getRecentSalons(limit = 4) {
     }
 }
 
-export async function getPublicSalonData(salonId: string) {
+export async function getPublicSalonData(slug: string) {
     try {
         const salon = await prisma.salon.findFirst({
             where: {
-                id: salonId,
+                slug,
                 isActive: true
             },
             include: {
@@ -546,6 +551,7 @@ export async function getRecentPosts(page: number = 1, filters: {
                     select: {
                         id: true,
                         name: true,
+                        slug: true,
                         ownerId: true,
                         categories: true,
                         images: true,
@@ -866,7 +872,13 @@ export async function createReview(data: {
             }
         })
 
-        revalidatePath(`/profile/${data.salonId}`)
+        const salonForRevalidate = await prisma.salon.findUnique({
+            where: { id: data.salonId },
+            select: { slug: true },
+        })
+        if (salonForRevalidate?.slug) {
+            revalidatePath(`/profile/${salonForRevalidate.slug}`)
+        }
         return review
     } catch (error) {
         console.error("Error creating review:", error)
