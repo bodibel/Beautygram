@@ -5,7 +5,8 @@ const prisma = new PrismaClient()
 
 async function main() {
   const salons = await prisma.salon.findMany({
-    where: { slug: null },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    where: { slug: null as any },
     select: { id: true, name: true },
   })
 
