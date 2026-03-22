@@ -13,6 +13,7 @@ interface PostCardProps {
         name: string
         avatar: string
         role: string
+        slug: string
     }
     images: string[]
     content: string
@@ -28,11 +29,11 @@ export function PostCard({ id, author, images, content, likes, comments }: PostC
     return (
         <Card className="overflow-hidden border-none shadow-md">
             <CardHeader className="flex flex-row items-center gap-4 p-4">
-                <div className="relative h-10 w-10 overflow-hidden rounded-full cursor-pointer" onClick={() => window.location.href = `/profile/${author.id}`}>
+                <div className="relative h-10 w-10 overflow-hidden rounded-full cursor-pointer" onClick={() => window.location.href = `/profile/${author.slug}`}>
                     <Image src={author.avatar || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80"} alt={author.name} fill className="object-cover" sizes="40px" />
                 </div>
                 <div className="flex flex-col">
-                    <span className="font-semibold cursor-pointer hover:text-primary" onClick={() => window.location.href = `/profile/${author.id}`}>{author.name}</span>
+                    <span className="font-semibold cursor-pointer hover:text-primary" onClick={() => window.location.href = `/profile/${author.slug}`}>{author.name}</span>
                     <span className="text-xs text-muted-foreground">{author.role}</span>
                 </div>
             </CardHeader>

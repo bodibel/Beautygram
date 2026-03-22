@@ -9,6 +9,7 @@ import { FavoriteButton } from "@/components/salon/FavoriteButton"
 
 interface ProviderCardProps {
     id: string
+    slug: string
     name: string
     category: string
     rating: number
@@ -19,11 +20,11 @@ interface ProviderCardProps {
     languages?: string[]
 }
 
-export function ProviderCard({ id, name, category, rating, reviewCount, location, image, avatar, languages }: ProviderCardProps) {
+export function ProviderCard({ id, slug, name, category, rating, reviewCount, location, image, avatar, languages }: ProviderCardProps) {
     const [hovered, setHovered] = useState(false)
 
     return (
-        <Link href={`/profile/${id}`} className="block h-full">
+        <Link href={`/profile/${slug}`} className="block h-full">
             <div
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}

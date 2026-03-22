@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Search, MessageSquare } from "lucide-react"
+import { MessageSquare } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useNotifications } from "@/lib/notification-context"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
@@ -19,7 +19,7 @@ export function TopBar() {
   return (
     <>
       <header
-        className="glass sticky top-0 w-full rounded-none border-b"
+        className="sticky top-0 w-full rounded-none border-b bg-white dark:bg-[#161B22] border-border"
         style={{ zIndex: "var(--z-topbar)" }}
       >
         <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-4 px-0">
@@ -32,14 +32,14 @@ export function TopBar() {
           </Link>
 
           {/* Main nav — Bejegyzések + Szolgáltatók */}
-          <nav className="hidden md:flex items-center gap-1 ml-2">
+          <nav className="hidden md:flex items-center gap-2 ml-2">
             <Link
               href="/"
               className={cn(
-                "px-3 py-1.5 text-sm font-medium rounded-xl transition-colors",
+                "px-5 py-2 text-sm font-semibold rounded-xl transition-colors",
                 pathname === "/"
-                  ? "text-primary bg-primary/10"
-                  : "text-muted-foreground hover:text-foreground hover:bg-primary-subtle"
+                  ? "bg-primary text-primary-foreground hover:bg-primary-hover"
+                  : "border border-primary/40 text-primary hover:bg-primary-subtle"
               )}
             >
               Bejegyzések
@@ -47,38 +47,21 @@ export function TopBar() {
             <Link
               href="/providers"
               className={cn(
-                "px-3 py-1.5 text-sm font-medium rounded-xl transition-colors",
+                "px-5 py-2 text-sm font-semibold rounded-xl transition-colors",
                 pathname?.startsWith("/providers")
-                  ? "text-primary bg-primary/10"
-                  : "text-muted-foreground hover:text-foreground hover:bg-primary-subtle"
+                  ? "bg-primary text-primary-foreground hover:bg-primary-hover"
+                  : "border border-primary/40 text-primary hover:bg-primary-subtle"
               )}
             >
               Szolgáltatók
             </Link>
           </nav>
 
-          {/* Search — full on desktop, hidden on mobile */}
-          <div className="flex-1 max-w-sm hidden md:block">
-            <div className="glass-solid flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground cursor-pointer hover:border-primary/30 transition-colors">
-              <Search className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden lg:block">Keresés...</span>
-            </div>
-          </div>
-
           {/* Spacer */}
           <div className="flex-1" />
 
           {/* Right actions */}
           <div className="flex items-center gap-2 pr-6">
-            {/* Search icon (mobile only) */}
-            <button
-              type="button"
-              className="md:hidden flex h-9 w-9 items-center justify-center rounded-xl hover:bg-primary-subtle transition-colors"
-              aria-label="Keresés"
-            >
-              <Search className="h-5 w-5" />
-            </button>
-
             {user && (
               <>
                 <Link

@@ -127,6 +127,7 @@ model Salon {
   // Duplikáció megelőzés: normalizált telefon+cím hash, globálisan egyedi
   // Formátum: sha256(normalizedPhone + "|" + normalizedAddress)
   salonFingerprint String? @unique
+  slug          String   @unique
 
   // Előfizetés (1-1 kapcsolat)
   subscription  Subscription?

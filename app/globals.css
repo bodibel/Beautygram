@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode for dark: utilities */
+@variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: var(--font-inter);
 
@@ -44,27 +47,27 @@
   --z-toast: 80;
 }
 
-/* Dark mode overrides */
+/* Dark mode overrides — Soft Midnight */
 .dark {
-  --color-background: #1C1410;
-  --color-surface: #2A1E16;
-  --color-surface-glass: rgba(42,30,22,0.85);
-  --color-foreground: #F4EDE8;
-  --color-primary: #D48A72;
-  --color-primary-hover: #E09A82;
+  --color-background: #0D1117;
+  --color-surface: #161B22;
+  --color-surface-glass: rgba(22,27,34,0.85);
+  --color-foreground: #E6EDF3;
+  --color-primary: #C87860;
+  --color-primary-hover: #D4896A;
   --color-primary-foreground: #FFFFFF;
-  --color-secondary: #2A1E16;
-  --color-secondary-foreground: #F4EDE8;
-  --color-muted: #241810;
-  --color-muted-foreground: #A08070;
+  --color-secondary: #161B22;
+  --color-secondary-foreground: #E6EDF3;
+  --color-muted: #21262D;
+  --color-muted-foreground: #8B949E;
   --color-accent: #6A9E98;
   --color-accent-foreground: #FFFFFF;
-  --color-accent-warm: #C07858;
-  --color-border: rgba(200,128,106,0.2);
-  --color-input: rgba(200,128,106,0.2);
-  --color-ring: #D48A72;
-  --color-popover: #2A1E16;
-  --color-popover-foreground: #F4EDE8;
+  --color-accent-warm: #C87860;
+  --color-border: rgba(48,54,61,0.8);
+  --color-input: rgba(48,54,61,0.8);
+  --color-ring: #C87860;
+  --color-popover: #161B22;
+  --color-popover-foreground: #E6EDF3;
   --color-primary-subtle: rgba(200,120,96,0.12);
   --color-accent-dim: #4A8A84;
 }

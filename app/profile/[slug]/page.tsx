@@ -19,9 +19,9 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
-export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
+export default function ProfilePage({ params }: { params: Promise<{ slug: string }> }) {
     const { userData } = useAuth()
-    const { id } = use(params)
+    const { slug } = use(params)
     const [activeTab, setActiveTab] = useState("posts")
     const [salon, setSalon] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -95,11 +95,11 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
     useEffect(() => {
         loadSalonData()
-    }, [id])
+    }, [slug])
 
     const loadSalonData = async () => {
         try {
-            const data = await getPublicSalonData(id)
+            const data = await getPublicSalonData(slug)
             setSalon(data)
         } catch (error) {
             console.error("Error loading salon data:", error)
@@ -132,7 +132,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         }
     }, [])
 
-    if (loading || (!salon && id !== "me")) {
+    if (loading || (!salon && slug !== "me")) {
         return (
             <MainLayout showRightSidebar={false} fullWidth>
                 <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -211,7 +211,8 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                                                     id: salon.id,
                                                     name: salon.name,
                                                     avatar,
-                                                    role: salon.categories?.[0] || "Beauty Salon"
+                                                    role: salon.categories?.[0] || "Beauty Salon",
+                                                    slug: salon.slug
                                                 },
                                                 images: post.images,
                                                 layout: post.layout,

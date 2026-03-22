@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { generateSlug } from "@/lib/slug"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ImagePlus, X, Loader2, MapPin } from "lucide-react"
 import { toast } from "sonner"
@@ -134,6 +135,11 @@ export function CreateSalonModal({ isOpen, onClose }: CreateSalonModalProps) {
                                         className="rounded-xl border-gray-200"
                                         required
                                     />
+                                    {name.trim() && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        URL: <span className="font-mono text-primary">glowyspot.com/profile/{generateSlug(name)}</span>
+                                      </p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="address">Cím</Label>

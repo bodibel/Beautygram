@@ -10,6 +10,7 @@ import { getFeaturedSalons } from "@/lib/actions/salon"
 interface FeaturedSalon {
     id: string
     name: string
+    slug: string
     profileImage: string | null
     categories: string[]
     city: string
@@ -62,7 +63,7 @@ export function StoryBar() {
                     return (
                         <Link
                             key={salon.id}
-                            href={`/profile/${salon.id}`}
+                            href={`/profile/${salon.slug}`}
                             className="flex flex-col items-center gap-2 min-w-[72px] cursor-pointer group"
                         >
                             {/* Avatar ring */}
