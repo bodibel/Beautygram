@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/lib/auth-context"
 import { createSalon, getUserSalons } from "@/lib/actions/salon"
 import { getCategories } from "@/lib/actions/category"
+import { generateSlug } from "@/lib/slug"
 
 interface Salon {
     id: string
@@ -210,6 +211,11 @@ export function ProviderDashboard() {
                             onChange={(e) => setSalonName(e.target.value)}
                             required
                         />
+                        {salonName.trim() && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            URL: <span className="font-mono text-primary">glowyspot.com/profile/{generateSlug(salonName)}</span>
+                          </p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
