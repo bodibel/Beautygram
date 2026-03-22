@@ -1,5 +1,7 @@
 // lib/slug.ts
 
+import type { PrismaClient } from "@prisma/client"
+
 /**
  * Transliterate Hungarian characters and generate a URL-safe slug.
  * Pure function — safe to call on the client.
@@ -27,14 +29,15 @@ export function generateSlug(name: string): string {
  */
 export async function generateUniqueSlug(
   name: string,
-  prisma: import("@prisma/client").PrismaClient,
+  prisma: PrismaClient,
   excludeId?: string
 ): Promise<string> {
   const base = generateSlug(name)
   let slug = base
   let counter = 2
+  const MAX_ATTEMPTS = 1000
 
-  while (true) {
+  while (counter <= MAX_ATTEMPTS) {
     const existing = await prisma.salon.findUnique({
       where: { slug },
       select: { id: true },
@@ -42,4 +45,6 @@ export async function generateUniqueSlug(
     if (!existing || existing.id === excludeId) return slug
     slug = `${base}-${counter++}`
   }
+
+  throw new Error(`Unable to generate unique slug for "${name}" after ${MAX_ATTEMPTS} attempts`)
 }
