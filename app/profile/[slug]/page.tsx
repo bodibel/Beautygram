@@ -211,7 +211,8 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                                                     id: salon.id,
                                                     name: salon.name,
                                                     avatar,
-                                                    role: salon.categories?.[0] || "Beauty Salon"
+                                                    role: salon.categories?.[0] || "Beauty Salon",
+                                                    slug: salon.slug
                                                 },
                                                 images: post.images,
                                                 layout: post.layout,
