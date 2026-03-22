@@ -1,13 +1,16 @@
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const domain = process.env.NEXTAUTH_URL || "https://glowyspot.com"
 const emailFrom = process.env.EMAIL_FROM || "noreply@mail.glowyspot.com"
+
+function getResend() {
+    return new Resend(process.env.RESEND_API_KEY)
+}
 
 export const sendPasswordResetEmail = async (email: string, token: string) => {
     const resetLink = `${domain}/auth/reset-password?token=${token}`
 
-    await resend.emails.send({
+    await getResend().emails.send({
         from: `GlowySpot <${emailFrom}>`,
         to: email,
         subject: "Jelszó visszaállítása",
@@ -21,7 +24,7 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
 }
 
 export const sendWelcomeEmail = async (email: string, name: string) => {
-    await resend.emails.send({
+    await getResend().emails.send({
         from: `GlowySpot <${emailFrom}>`,
         to: email,
         subject: "Üdvözlünk a GlowySpot-on!",
@@ -65,7 +68,7 @@ export const sendSubscriptionExpiryWarning = async (
     })
     const planLabel = plan === "FREE" ? "Ingyenes" : plan === "STANDARD" ? "Standard" : "Prémium"
 
-    await resend.emails.send({
+    await getResend().emails.send({
         from: `GlowySpot <${emailFrom}>`,
         to: email,
         subject: `⚠️ ${daysLeft} nap múlva lejár a(z) "${salonName}" előfizetése`,
@@ -115,7 +118,7 @@ export const sendSubscriptionRenewalConfirmation = async (
     })
     const planLabel = plan === "STANDARD" ? "Standard (3 990 Ft/hó)" : "Prémium (7 990 Ft/hó)"
 
-    await resend.emails.send({
+    await getResend().emails.send({
         from: `GlowySpot <${emailFrom}>`,
         to: email,
         subject: `✅ Előfizetés megújítva – ${salonName}`,
