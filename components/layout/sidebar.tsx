@@ -69,12 +69,12 @@ export function Sidebar() {
   return (
     <>
       <aside
-        className="hidden lg:flex flex-col w-[280px] flex-shrink-0 sticky top-[80px] self-start h-[calc(100vh-5rem)] overflow-y-auto gap-3 py-4 px-3 bg-surface rounded-2xl border border-border shadow-sm"
+        className="hidden lg:flex flex-col w-[280px] flex-shrink-0 sticky top-[80px] self-start h-[calc(100vh-5rem)] overflow-y-auto gap-3 py-4 px-3"
         style={{ zIndex: "var(--z-sidebar)" }}
       >
         {/* ── Nav links (salon / admin context) ── */}
         {showNavLinks && navLinks && (
-          <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+          <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1 rounded-2xl bg-surface border border-border shadow-sm">
             {navLinks.map((link, index) => {
               const Icon = link.icon
               let isActive = false
@@ -224,7 +224,7 @@ export function Sidebar() {
 
         {/* ── Inline Filter Panel (main context) ── */}
         {showFilterPanel && (
-          <div className="overflow-hidden flex flex-col flex-1 min-h-0">
+          <div className="rounded-2xl bg-surface border border-border shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
               <span className="text-sm font-semibold text-foreground">Szűrők</span>
@@ -245,7 +245,7 @@ export function Sidebar() {
 
         {/* ── Logged-in user nav links (non-salon, non-admin) ── */}
         {!showNavLinks && !showFilterPanel && !showProfilePanel && navLinks && (
-          <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+          <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1 rounded-2xl bg-surface border border-border shadow-sm">
             {navLinks.map((link, index) => {
               const Icon = link.icon
               const isActive = link.href
@@ -286,7 +286,7 @@ export function Sidebar() {
         )}
 
         {/* ── User card — bottom ── */}
-        <div className="flex-shrink-0 -mx-3 -mb-4 px-3 pb-4 pt-3 border-t border-border bg-secondary rounded-b-2xl">
+        <div className="flex-shrink-0 rounded-2xl bg-surface border border-border shadow-sm p-3">
           {userData ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 p-2 rounded-xl bg-secondary">
