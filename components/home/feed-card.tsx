@@ -17,6 +17,7 @@ interface FeedCardProps {
             name: string
             avatar: string
             role: string
+            slug: string
             currency?: string
             minPrice?: number
             rating?: number
@@ -204,7 +205,7 @@ export function FeedCard({ post, isOwner, onEdit, onLike }: FeedCardProps) {
 
                         {/* Author info */}
                         <Link
-                            href={`/profile/${post.author.id}`}
+                            href={`/profile/${post.author.slug}`}
                             className="flex items-center gap-3"
                             onClick={(e) => e.stopPropagation()}
                         >

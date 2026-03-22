@@ -21,6 +21,7 @@ interface PostDetailModalProps {
             name: string
             avatar: string
             role: string
+            slug: string
             currency?: string
             minPrice?: number
             rating?: number
@@ -166,7 +167,7 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                         {/* Header */}
                         <div className="p-6 border-b border-border">
                             <div className="flex items-center justify-between mb-4">
-                                <Link href={`/profile/${post.author.id}`} className="flex items-center gap-3">
+                                <Link href={`/profile/${post.author.slug}`} className="flex items-center gap-3">
                                     <div className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-primary/10 p-0.5">
                                         <div className="relative h-full w-full rounded-full overflow-hidden">
                                             <Image src={post.author.avatar} alt={post.author.name} fill className="object-cover" />

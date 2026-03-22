@@ -6,6 +6,7 @@ import { createSalon, saveOpeningHours, createService } from "@/lib/actions/salo
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { generateSlug } from "@/lib/slug"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -539,6 +540,11 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
                                             placeholder="Pl. Rózsa Szépségszalon"
                                             className="text-lg"
                                         />
+                                        {name.trim() && (
+                                          <p className="text-xs text-muted-foreground mt-1">
+                                            URL: <span className="font-mono text-primary">glowyspot.com/profile/{generateSlug(name)}</span>
+                                          </p>
+                                        )}
                                     </div>
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="space-y-2">

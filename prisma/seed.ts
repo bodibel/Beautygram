@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import "dotenv/config"
+import { generateUniqueSlug } from "../lib/slug"
 
 const connectionString = `${process.env.DATABASE_URL}`
 const pool = new Pool({ connectionString })
@@ -260,9 +261,11 @@ async function main() {
     let salonIndex = 0
     for (const s of salonsData) {
         const fingerprint = makeFingerprint(null, s.address)
+        const slug = await generateUniqueSlug(s.name, prisma)
         const salon = await prisma.salon.create({
             data: {
                 ...s,
+                slug,
                 currency: "HUF",
                 rating: 4.5 + Math.random() * 0.5,
                 reviewCount: Math.floor(Math.random() * 50),

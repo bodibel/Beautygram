@@ -32,7 +32,8 @@ export default function FavoritesPage() {
                 location: fav.salon.city,
                 image: fav.salon.coverImage || fav.salon.images?.[0] || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&q=80",
                 avatar: fav.salon.profileImage || fav.salon.images?.[0] || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80",
-                languages: fav.salon.languages
+                languages: fav.salon.languages,
+                slug: fav.salon.slug
             })))
         } catch (error) {
             console.error("Error loading favorites:", error)

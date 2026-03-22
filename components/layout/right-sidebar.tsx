@@ -77,7 +77,7 @@ export function RightSidebar() {
                         salons.map((salon) => (
                             <Link
                                 key={salon.id}
-                                href={`/profile/${salon.id}`}
+                                href={`/profile/${salon.slug}`}
                                 className="flex items-center gap-3 group hover:bg-primary-subtle rounded-xl px-2 py-1.5 -mx-2 transition-colors"
                             >
                                 {/* Avatar */}
