@@ -123,7 +123,7 @@ export function Sidebar() {
 
         {/* ── Salon Profile Panel (profile page context) ── */}
         {showProfilePanel && salonProfile && (
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden rounded-2xl bg-surface border border-border shadow-sm">
             {/* Back button */}
             <div className="px-3 pt-4 pb-2 flex-shrink-0">
               <button
