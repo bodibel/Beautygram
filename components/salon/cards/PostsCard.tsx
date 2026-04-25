@@ -37,10 +37,17 @@ export function PostsCard({ posts, onAddPost, onEditPost, onDeletePost, formatDa
                 ) : (
                     <div className="space-y-4">
                         {posts.map((post) => (
-                            <button
+                            <div
                                 key={post.id}
-                                type="button"
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => onOpenPost(post)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault()
+                                        onOpenPost(post)
+                                    }
+                                }}
                                 className="w-full cursor-pointer rounded-lg border p-4 text-left transition-colors hover:bg-primary-subtle"
                             >
                                 <div className="flex items-start gap-4">
@@ -71,7 +78,7 @@ export function PostsCard({ posts, onAddPost, onEditPost, onDeletePost, formatDa
                                         </Button>
                                     </div>
                                 </div>
-                            </button>
+                            </div>
                         ))}
                     </div>
                 )}
