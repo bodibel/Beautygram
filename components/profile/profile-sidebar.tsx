@@ -1,9 +1,6 @@
 "use client"
 
-import { Clock, MapPin, ChevronRight, Star, Sparkles, Phone, Mail } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { GoogleMap } from "@react-google-maps/api"
-import { AdvancedMarker } from "@/components/ui/advanced-marker"
+import { Clock, Mail, MapPin, Phone } from "lucide-react"
 
 interface ProfileSidebarProps {
     salon: any
@@ -20,22 +17,13 @@ const DAY_LABELS: Record<string, string> = {
 }
 
 export function ProfileSidebar({ salon }: ProfileSidebarProps) {
-    const featuredServices = salon.services?.slice(0, 3) || []
-    const openingHours = salon.openingHours || []
+    const openingHours = Array.isArray(salon.openingHours) ? salon.openingHours : []
 
-    // Check if contact info should be shown
     const showPhone = salon.showPhoneOnProfile !== false && salon.phone
     const showEmail = salon.showEmailOnProfile === true && salon.email
 
-    // Map center based on salon coordinates or Budapest as default
-    const mapCenter = {
-        lat: salon.lat || 47.497913,
-        lng: salon.lng || 19.040236
-    }
-
     return (
         <div className="space-y-6">
-            {/* Contact Info Widget - only show if there's info to display */}
             {(showPhone || showEmail) && (
                 <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
                     <div className="flex items-center gap-2 mb-4">
@@ -69,9 +57,6 @@ export function ProfileSidebar({ salon }: ProfileSidebarProps) {
                 </div>
             )}
 
-            {/* Hours Widget - Dynamic from database */}
-
-            {/* Hours Widget - Dynamic from database */}
             <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center gap-2 mb-4">
                     <Clock className="h-5 w-5 text-gray-400" />
@@ -95,28 +80,11 @@ export function ProfileSidebar({ salon }: ProfileSidebarProps) {
                 </div>
             </div>
 
-            {/* Map Widget */}
             <div className="rounded-3xl overflow-hidden bg-gray-100 aspect-video relative">
-                {salon.lat && salon.lng ? (
-                    <GoogleMap
-                        mapContainerStyle={{ width: "100%", height: "100%" }}
-                        center={mapCenter}
-                        zoom={15}
-                        options={{
-                            disableDefaultUI: true,
-                            zoomControl: true,
-                            streetViewControl: false,
-                            mapTypeControl: false,
-                        }}
-                    >
-                        <AdvancedMarker position={mapCenter} />
-                    </GoogleMap>
-                ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-medium text-sm">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        Térkép nem elérhető
-                    </div>
-                )}
+                <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-medium text-sm">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    Térkép nem elérhető
+                </div>
             </div>
             <p className="text-xs text-gray-500">{salon.city}, {salon.address}</p>
         </div>

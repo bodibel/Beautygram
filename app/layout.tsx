@@ -33,13 +33,11 @@ export const metadata: Metadata = {
 // Inline script to prevent flash-of-incorrect-theme (FOIT).
 // Absence of the key (!stored) means "system" preference — intentional, not a miss.
 // ThemeProvider removes the key when the user selects "system" mode.
-const foitScript = `
+const lightModeScript = `
   (function() {
     try {
-      var stored = localStorage.getItem('glowyspot-theme');
-      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      var isDark = stored === 'dark' || (!stored && prefersDark);
-      if (isDark) document.documentElement.classList.add('dark');
+      localStorage.setItem('glowyspot-theme', 'light');
+      document.documentElement.classList.remove('dark');
     } catch(e) {}
   })();
 `;
@@ -48,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="hu" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: foitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: lightModeScript }} />
       </head>
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
         <ThemeProvider>

@@ -8,6 +8,7 @@ import { formatDistanceToNow } from "date-fns"
 import { hu } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { PostDetailModal } from "./post-detail-modal"
+import { normalizeImageList, normalizeImageSrc } from "@/lib/image-utils"
 
 interface FeedCardProps {
     post: {
@@ -42,8 +43,9 @@ export function FeedCard({ post, isOwner, onEdit, onLike }: FeedCardProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
     const [isExpanded, setIsExpanded] = useState(false)
 
-    const images = post.images || []
+    const images = normalizeImageList(post.images)
     const layout = post.layout || "grid"
+    const authorAvatar = normalizeImageSrc(post.author.avatar) || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80"
 
     const renderImages = () => {
         if (images.length === 0) {
@@ -211,7 +213,7 @@ export function FeedCard({ post, isOwner, onEdit, onLike }: FeedCardProps) {
                         >
                             <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-white/60 shadow-md">
                                 <Image
-                                    src={post.author.avatar}
+                                    src={authorAvatar}
                                     alt={post.author.name}
                                     fill
                                     className="object-cover"

@@ -8,7 +8,6 @@ async function testRegistration() {
         const result = await registerUser({
             email: testEmail,
             name: 'Test Deployment User',
-            role: 'visitor',
             password: 'TestPassword123!'
         });
         if (result.success && result.user) {

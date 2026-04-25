@@ -8,14 +8,14 @@ export function ProfileTabs({ activeTab, onChange, isTeam }: { activeTab: string
     ]
 
     return (
-        <div className="border-b border-gray-100 sticky top-0 z-10 bg-white/95 backdrop-blur-md shadow-sm">
-            <div className="container mx-auto px-4">
-                <div className="flex gap-8 justify-center">
+        <div className="bg-white">
+            <div className="w-full overflow-x-auto px-4 scrollbar-hide">
+                <div className="flex min-w-max gap-3 border-b border-gray-100 sm:justify-center sm:gap-8">
                     {tabs.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => onChange(tab.id)}
-                            className={`py-4 text-sm font-bold border-b-[3px] transition-colors ${activeTab === tab.id
+                            className={`whitespace-nowrap py-4 text-sm font-bold border-b-[3px] transition-colors ${activeTab === tab.id
                                 ? "border-primary text-gray-900"
                                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200"
                                 }`}

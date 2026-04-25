@@ -28,7 +28,7 @@ export default function ProvidersPage() {
                 image: salon.coverImage || salon.images?.[0] || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&q=80",
                 avatar: salon.profileImage || salon.images?.[0] || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80",
                 languages: salon.languages,
-                slug: salon.slug
+                slug: salon.slug || salon.id
             }))
 
             setProviders(loadedProviders)

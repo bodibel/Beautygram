@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext } from "react"
 import { useSession, SessionProvider } from "next-auth/react"
 
 type UserRole = "visitor" | "provider" | "admin"
@@ -27,24 +27,16 @@ const AuthContext = createContext<AuthContextType>({
 
 function AuthInternalProvider({ children }: { children: React.ReactNode }) {
     const { data: session, status } = useSession()
-    const [userData, setUserData] = useState<UserData | null>(null)
     const loading = status === "loading"
-
-    useEffect(() => {
-        if (session?.user) {
-            // In a real app, you might fetch extra user data from an API
-            // For now, we'll map the session user
-            setUserData({
-                id: (session.user as any).id,
-                email: session.user.email || "",
-                role: (session.user as any).role || "visitor",
-                name: session.user.name || undefined,
-                image: session.user.image || undefined
-            })
-        } else {
-            setUserData(null)
+    const userData = session?.user
+        ? {
+            id: (session.user as any).id,
+            email: session.user.email || "",
+            role: ((session.user as any).role || "visitor") as UserRole,
+            name: session.user.name || undefined,
+            image: session.user.image || undefined
         }
-    }, [session])
+        : null
 
     return (
         <AuthContext.Provider value={{ user: session?.user ?? null, userData, loading }}>

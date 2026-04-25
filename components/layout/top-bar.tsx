@@ -3,36 +3,38 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { MessageSquare } from "lucide-react"
+import { MessageSquare, SlidersHorizontal } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useNotifications } from "@/lib/notification-context"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { AuthModal } from "@/components/auth/auth-modal"
 import { cn } from "@/lib/utils"
+import { useFilter } from "@/lib/filter-context"
 
 export function TopBar() {
   const { user, userData } = useAuth()
   const { unreadCount } = useNotifications()
+  const { toggleFilterModal } = useFilter()
   const pathname = usePathname()
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const showFilterTrigger = pathname === "/" || pathname?.startsWith("/providers")
 
   return (
     <>
       <header
-        className="sticky top-0 w-full rounded-none border-b bg-white dark:bg-[#161B22] border-border"
+        className="sticky top-0 w-full rounded-none border-b border-border bg-white"
         style={{ zIndex: "var(--z-topbar)" }}
       >
-        <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-4 px-0">
+        <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-2 px-3 sm:px-4 lg:gap-4 lg:px-0">
           {/* Logo — aligned with left sidebar width */}
           <Link
             href="/"
-            className="flex-shrink-0 w-[60px] lg:w-[280px] flex items-center justify-center lg:justify-start lg:px-4 text-xl font-light tracking-[0.15em] text-foreground hover:opacity-80 transition-opacity"
+            className="min-w-0 flex-1 truncate pr-2 text-base font-light tracking-[0.08em] text-foreground transition-opacity hover:opacity-80 sm:text-lg lg:w-[280px] lg:flex-none lg:justify-start lg:px-4 lg:text-xl lg:tracking-[0.15em]"
           >
             GlowySpot
           </Link>
 
           {/* Main nav — Bejegyzések + Szolgáltatók */}
-          <nav className="hidden md:flex items-center gap-2 ml-2">
+          <nav className="hidden items-center gap-2 md:flex lg:ml-6">
             <Link
               href="/"
               className={cn(
@@ -58,15 +60,27 @@ export function TopBar() {
           </nav>
 
           {/* Spacer */}
-          <div className="flex-1" />
+          <div className="hidden md:block flex-1" />
 
           {/* Right actions */}
-          <div className="flex items-center gap-2 pr-6">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:pr-6">
+            {showFilterTrigger && (
+              <button
+                type="button"
+                onClick={() => toggleFilterModal(true)}
+                className="flex h-9 items-center gap-2 rounded-xl border border-primary/20 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary-subtle lg:hidden"
+                aria-label="Keresés és szűrés"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                <span className="hidden sm:inline">Szűrés</span>
+              </button>
+            )}
+
             {user && (
               <>
                 <Link
                   href="/dashboard/messages"
-                  className="relative flex h-9 w-9 items-center justify-center rounded-xl hover:bg-primary-subtle transition-colors"
+                  className="relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-primary-subtle"
                   aria-label="Üzenetek"
                 >
                   <MessageSquare className="h-5 w-5" />
@@ -79,7 +93,7 @@ export function TopBar() {
 
                 <Link
                   href="/profile/me"
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent-warm text-sm font-bold text-white ring-2 ring-primary/20 hover:ring-primary/40 transition-all"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent-warm text-sm font-bold text-white ring-2 ring-primary/20 transition-all hover:ring-primary/40"
                   aria-label="Profilom"
                 >
                   {userData?.name?.[0] || "U"}
@@ -91,13 +105,11 @@ export function TopBar() {
               <button
                 type="button"
                 onClick={() => setIsAuthModalOpen(true)}
-                className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover transition-colors"
+                className="rounded-xl bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover sm:px-4"
               >
                 Bejelentkezés
               </button>
             )}
-
-            <ThemeToggle />
           </div>
         </div>
       </header>

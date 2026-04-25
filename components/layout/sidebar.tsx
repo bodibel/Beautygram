@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useParams, useRouter } from "next/navigation"
-import { LogOut, ArrowLeft, Star, MapPin, MessageCircle } from "lucide-react"
+import { LogOut, ArrowLeft, Star, MapPin, MessageCircle, Store } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +19,8 @@ import { useNotifications } from "@/lib/notification-context"
 import { useSalonProfile } from "@/lib/salon-profile-context"
 import { FavoriteButton } from "@/components/salon/FavoriteButton"
 import { signOut } from "next-auth/react"
+import { getSalonName } from "@/lib/actions/salon"
+import { normalizeImageSrc } from "@/lib/image-utils"
 
 const CATEGORY_LABELS: Record<string, string> = {
   nails: "Műköröm",
@@ -44,37 +46,144 @@ export function Sidebar() {
   const salonProfile = salonProfileCtx?.salonProfile
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [activeSalonHeader, setActiveSalonHeader] = useState<{ name: string; profileImage: string | null } | null>(null)
 
   const isSalonContext = !!(pathname.startsWith("/salon/") && params.id)
   const salonId = params.id as string | undefined
   const isAdmin = userData?.role === "admin"
   const isOnDashboard = pathname?.startsWith("/dashboard")
   const isOnProfilePage = pathname?.startsWith("/profile/")
+  const isAccountContext = pathname === "/profile/me" || pathname?.startsWith("/account/")
+  const accountLinks = [...loggedInVisitorLinks, ...authLinks]
 
   // Nav links per context
   const navLinks = isSalonContext && salonId
     ? getSalonLinks(salonId)
     : isAdmin
       ? adminLinks
-      : isOnDashboard && userData
-        ? [...authLinks, ...loggedInVisitorLinks]
+      : (isOnDashboard || isAccountContext) && userData
+        ? accountLinks
         : null   // main pages → show filter panel
 
-  const showNavLinks = !!(navLinks && (isSalonContext || isAdmin || isOnDashboard))
+  const showNavLinks = !!(navLinks && (isSalonContext || isAdmin || isOnDashboard || isAccountContext))
   const showProfilePanel = isOnProfilePage && !!salonProfile
   const showFilterPanel = !showNavLinks && !showProfilePanel
 
   const isOwner = userData?.id === salonProfile?.ownerId
 
+  useEffect(() => {
+    const loadActiveSalonHeader = async () => {
+      if (!isSalonContext || !salonId) {
+        setActiveSalonHeader(null)
+        return
+      }
+
+      try {
+        const data = await getSalonName(salonId)
+        if (data) {
+          setActiveSalonHeader({
+            name: data.name,
+            profileImage: data.profileImage,
+          })
+        } else {
+          setActiveSalonHeader(null)
+        }
+      } catch (error) {
+        console.error("Error loading active salon header:", error)
+        setActiveSalonHeader(null)
+      }
+    }
+
+    loadActiveSalonHeader()
+  }, [isSalonContext, salonId])
+
   return (
     <>
+      {showNavLinks && navLinks && (isSalonContext || isAccountContext) && (
+        <nav className="sticky top-[52px] z-30 flex w-full gap-2 overflow-x-auto border-b border-border bg-background/95 px-3 py-2 backdrop-blur lg:hidden">
+          {navLinks.map((link, index) => {
+            const Icon = link.icon
+            const isActive = link.href
+              ? link.href === "/" ? pathname === "/" : pathname === link.href
+              : false
+
+            if (link.onClick) {
+              return (
+                <button
+                  key={`mobile-${index}`}
+                  type="button"
+                  onClick={link.onClick}
+                  className={cn(
+                    "flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold",
+                    isActive ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-muted-foreground"
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="whitespace-nowrap">{link.label}</span>
+                  {link.badge === "unread-messages" && unreadCount > 0 && (
+                    <Badge className="h-5 min-w-[20px] rounded-full border-none bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+                      {unreadCount}
+                    </Badge>
+                  )}
+                </button>
+              )
+            }
+
+            return (
+              <Link
+                key={`mobile-${link.href}`}
+                href={link.href!}
+                className={cn(
+                  "flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold",
+                  isActive ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-muted-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="whitespace-nowrap">{link.label}</span>
+                {link.badge === "unread-messages" && unreadCount > 0 && (
+                  <Badge className="h-5 min-w-[20px] rounded-full border-none bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+                    {unreadCount}
+                  </Badge>
+                )}
+              </Link>
+            )
+          })}
+        </nav>
+      )}
+
       <aside
-        className="hidden lg:flex flex-col w-[280px] flex-shrink-0 sticky top-[80px] self-start h-[calc(100vh-5rem)] overflow-y-auto gap-3 py-4 px-3"
+        className="hidden lg:flex flex-col w-[280px] flex-shrink-0 sticky top-[64px] self-start h-[calc(100vh-4rem)] overflow-y-auto gap-3 px-3 pt-2 pb-4"
         style={{ zIndex: "var(--z-sidebar)" }}
       >
         {/* ── Nav links (salon / admin context) ── */}
         {showNavLinks && navLinks && (
           <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1 rounded-2xl bg-surface border border-border shadow-sm">
+            {isSalonContext && activeSalonHeader && (
+              <div className="mb-4 px-2">
+                <div className="flex items-center gap-3 rounded-2xl border border-border bg-secondary/50 px-3 py-3">
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-primary/10">
+                    {normalizeImageSrc(activeSalonHeader.profileImage) ? (
+                      <Image
+                        src={normalizeImageSrc(activeSalonHeader.profileImage)!}
+                        alt={activeSalonHeader.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-primary">
+                        <Store className="h-5 w-5" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                      Aktív szalon
+                    </p>
+                    <p className="truncate text-sm font-bold text-foreground">{activeSalonHeader.name}</p>
+                  </div>
+                </div>
+              </div>
+            )}
             {navLinks.map((link, index) => {
               const Icon = link.icon
               let isActive = false

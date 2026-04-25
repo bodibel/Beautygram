@@ -10,6 +10,7 @@ import { useState, useEffect } from "react"
 import { getPostComments, addComment } from "@/lib/actions/salon"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
+import { normalizeImageList, normalizeImageSrc } from "@/lib/image-utils"
 
 interface PostDetailModalProps {
     isOpen: boolean
@@ -93,11 +94,12 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
         }
     }
 
-    const images = post.images || []
+    const images = normalizeImageList(post.images)
+    const authorAvatar = normalizeImageSrc(post.author.avatar) || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80"
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-5xl p-0 overflow-hidden border-none bg-surface rounded-3xl shadow-2xl">
+            <DialogContent className="max-w-5xl overflow-hidden rounded-3xl border-none bg-surface p-0 shadow-2xl [&>button:last-child]:hidden">
                 <DialogTitle className="sr-only">Bejegyzés: {post.author.name}</DialogTitle>
                 <div className="flex flex-col lg:flex-row h-[80vh]">
                     {/* Left side: Image */}
@@ -151,12 +153,11 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                             </div>
                         )}
 
-                        {/* Mobile close button */}
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={onClose}
-                            className="absolute top-4 left-4 rounded-full bg-black/20 text-white hover:bg-black/40 lg:hidden z-50"
+                            className="absolute right-4 top-4 z-50 rounded-full bg-black/20 text-white hover:bg-black/40"
                         >
                             <X className="h-5 w-5" />
                         </Button>
@@ -170,7 +171,7 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                                 <Link href={`/profile/${post.author.slug}`} className="flex items-center gap-3">
                                     <div className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-primary/10 p-0.5">
                                         <div className="relative h-full w-full rounded-full overflow-hidden">
-                                            <Image src={post.author.avatar} alt={post.author.name} fill className="object-cover" />
+                                            <Image src={authorAvatar} alt={post.author.name} fill className="object-cover" />
                                         </div>
                                     </div>
                                     <div className="flex flex-col">
@@ -220,7 +221,7 @@ export function PostDetailModal({ isOpen, onClose, post, onLike }: PostDetailMod
                                             <div key={comment.id} className="flex gap-3 group/comment">
                                                 <div className="relative h-8 w-8 rounded-full overflow-hidden shrink-0 border border-border">
                                                     <Image
-                                                        src={comment.user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user.name || "User")}&background=random`}
+                                                        src={normalizeImageSrc(comment.user.image) || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user.name || "User")}&background=random`}
                                                         alt={comment.user.name || "User"}
                                                         fill
                                                         className="object-cover"

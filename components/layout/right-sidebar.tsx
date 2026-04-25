@@ -8,6 +8,7 @@ import { Star } from "lucide-react"
 import { HeroBanner } from "@/components/home/hero-banner"
 import { getRecentSalons } from "@/lib/actions/salon"
 import { useFilter } from "@/lib/filter-context"
+import { normalizeImageSrc } from "@/lib/image-utils"
 
 // Tag → service slug mapping (slug-alapú szűrés) vagy szöveges keresés
 const TRENDING_TAGS = [
@@ -74,47 +75,51 @@ export function RightSidebar() {
                     ) : salons.length === 0 ? (
                         <p className="text-xs text-muted-foreground text-center py-2">Még nincs szalon.</p>
                     ) : (
-                        salons.map((salon) => (
-                            <Link
-                                key={salon.id}
-                                href={`/profile/${salon.slug}`}
-                                className="flex items-center gap-3 group hover:bg-primary-subtle rounded-xl px-2 py-1.5 -mx-2 transition-colors"
-                            >
-                                {/* Avatar */}
-                                <div className="relative h-10 w-10 rounded-full overflow-hidden bg-secondary flex-shrink-0 border border-border">
-                                    {salon.profileImage ? (
+                        salons.map((salon) => {
+                            const normalizedProfileImage = normalizeImageSrc(salon.profileImage)
+
+                            return (
+                                <Link
+                                    key={salon.id}
+                                    href={`/profile/${salon.slug}`}
+                                    className="flex items-center gap-3 group hover:bg-primary-subtle rounded-xl px-2 py-1.5 -mx-2 transition-colors"
+                                >
+                                    {/* Avatar */}
+                                    <div className="relative h-10 w-10 rounded-full overflow-hidden bg-secondary flex-shrink-0 border border-border">
+                                        {normalizedProfileImage ? (
                                         <Image
-                                            src={salon.profileImage}
+                                            src={normalizedProfileImage}
                                             alt={salon.name}
                                             fill
                                             className="object-cover"
                                         />
-                                    ) : (
-                                        <div className="h-full w-full flex items-center justify-center text-primary font-bold text-sm">
-                                            {salon.name?.[0]?.toUpperCase()}
+                                        ) : (
+                                            <div className="h-full w-full flex items-center justify-center text-primary font-bold text-sm">
+                                                {salon.name?.[0]?.toUpperCase()}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                                            {salon.name}
+                                        </p>
+                                        <p className="text-[11px] text-muted-foreground truncate">
+                                            {salon.city || salon.categories?.[0] || ""}
+                                        </p>
+                                    </div>
+
+                                    {/* Rating */}
+                                    {salon.rating > 0 && (
+                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                            <span className="text-xs font-bold text-foreground">{salon.rating.toFixed(1)}</span>
                                         </div>
                                     )}
-                                </div>
-
-                                {/* Info */}
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                                        {salon.name}
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground truncate">
-                                        {salon.city || salon.categories?.[0] || ""}
-                                    </p>
-                                </div>
-
-                                {/* Rating */}
-                                {salon.rating > 0 && (
-                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                                        <span className="text-xs font-bold text-foreground">{salon.rating.toFixed(1)}</span>
-                                    </div>
-                                )}
-                            </Link>
-                        ))
+                                </Link>
+                            )
+                        })
                     )}
                 </div>
             </div>

@@ -11,6 +11,7 @@ import { Post } from "@/lib/salon-types"
 import { PostsCard } from "@/components/salon/cards/PostsCard"
 import { PostModal } from "@/components/salon/modals/PostModal"
 import { toast } from "sonner"
+import { PostDetailModal } from "@/components/home/post-detail-modal"
 
 export default function SalonPostsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params)
@@ -26,6 +27,7 @@ export default function SalonPostsPage({ params }: { params: Promise<{ id: strin
 
     const [isPostModalOpen, setIsPostModalOpen] = useState(false)
     const [editingPost, setEditingPost] = useState<Post | null>(null)
+    const [selectedPost, setSelectedPost] = useState<Post | null>(null)
 
     const handleSavePost = async (content: string, imageUrls: string[], layout: string) => {
         try {
@@ -76,8 +78,8 @@ export default function SalonPostsPage({ params }: { params: Promise<{ id: strin
 
     if (loading) {
         return (
-            <MainLayout>
-                <div className="container mx-auto p-6">
+            <MainLayout showRightSidebar={false} fullWidth>
+                <div className="w-full max-w-6xl p-6 lg:mr-auto">
                     <div className="text-muted-foreground">Betöltés...</div>
                 </div>
             </MainLayout>
@@ -86,8 +88,8 @@ export default function SalonPostsPage({ params }: { params: Promise<{ id: strin
 
     if (!salon && !loading) {
         return (
-            <MainLayout showRightSidebar={false}>
-                <div className="container mx-auto p-6 text-center">
+            <MainLayout showRightSidebar={false} fullWidth>
+                <div className="w-full max-w-4xl p-6 text-center lg:mr-auto">
                     <p className="text-muted-foreground">Szalon nem található vagy nincs jogosultságod.</p>
                 </div>
             </MainLayout>
@@ -96,9 +98,29 @@ export default function SalonPostsPage({ params }: { params: Promise<{ id: strin
 
     if (!salon) return null
 
+    const selectedPostForModal = selectedPost ? {
+        id: selectedPost.id,
+        author: {
+            id: salon.id,
+            name: salon.name,
+            avatar: salon.profileImage || salon.images?.[0] || "",
+            role: salon.categories?.[0] || "Szalon",
+            slug: (salon as any).slug || salon.id,
+            currency: salon.currency,
+            rating: salon.rating,
+            reviewCount: salon.reviewCount,
+        },
+        images: selectedPost.images || [],
+        content: selectedPost.content,
+        likes: selectedPost._count?.likes || 0,
+        comments: selectedPost._count?.comments || 0,
+        isLiked: selectedPost.isLiked,
+        createdAt: new Date(selectedPost.createdAt),
+    } : null
+
     return (
-        <MainLayout showRightSidebar={false}>
-            <div className="container mx-auto p-6 space-y-8 min-h-screen">
+        <MainLayout showRightSidebar={false} fullWidth>
+            <div className="w-full max-w-6xl min-h-screen space-y-8 p-6 lg:mr-auto">
                 <h1 className="text-3xl font-bold mb-6">Bejegyzések kezelése</h1>
                 <PostsCard
                     posts={posts}
@@ -112,6 +134,7 @@ export default function SalonPostsPage({ params }: { params: Promise<{ id: strin
                     }}
                     onDeletePost={handleDeletePost}
                     formatDate={formatDate}
+                    onOpenPost={setSelectedPost}
                 />
 
                 <PostModal
@@ -126,6 +149,14 @@ export default function SalonPostsPage({ params }: { params: Promise<{ id: strin
                     initialLayout={editingPost?.layout}
                     isEditing={!!editingPost}
                 />
+
+                {selectedPostForModal && (
+                    <PostDetailModal
+                        isOpen={!!selectedPost}
+                        onClose={() => setSelectedPost(null)}
+                        post={selectedPostForModal}
+                    />
+                )}
             </div>
         </MainLayout>
     )

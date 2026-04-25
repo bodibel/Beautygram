@@ -71,8 +71,8 @@ export default function SalonHoursPage({ params }: { params: Promise<{ id: strin
 
     if (loading) {
         return (
-            <MainLayout>
-                <div className="container mx-auto p-6">
+            <MainLayout showRightSidebar={false} fullWidth>
+                <div className="w-full max-w-5xl p-6 lg:mr-auto">
                     <div className="text-muted-foreground">Betöltés...</div>
                 </div>
             </MainLayout>
@@ -85,8 +85,8 @@ export default function SalonHoursPage({ params }: { params: Promise<{ id: strin
     }
 
     return (
-        <MainLayout showRightSidebar={false}>
-            <div className="container mx-auto p-6 md:p-8 max-w-5xl space-y-10">
+        <MainLayout showRightSidebar={false} fullWidth>
+            <div className="w-full max-w-5xl space-y-10 p-6 md:p-8 lg:mr-auto">
                 <div className="flex flex-col gap-1">
                     <h1 className="text-3xl font-black text-gray-900 tracking-tight">Nyitvatartás és Szünetek</h1>
                     <p className="text-gray-500">Kezeld szalonod elérhetőségét és tervezett szüneteit.</p>

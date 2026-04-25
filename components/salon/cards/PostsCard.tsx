@@ -11,9 +11,10 @@ interface PostsCardProps {
     onEditPost: (post: Post) => void
     onDeletePost: (postId: string) => void
     formatDate: (timestamp: any) => string
+    onOpenPost: (post: Post) => void
 }
 
-export function PostsCard({ posts, onAddPost, onEditPost, onDeletePost, formatDate }: PostsCardProps) {
+export function PostsCard({ posts, onAddPost, onEditPost, onDeletePost, formatDate, onOpenPost }: PostsCardProps) {
     return (
         <Card>
             <CardHeader>
@@ -36,7 +37,12 @@ export function PostsCard({ posts, onAddPost, onEditPost, onDeletePost, formatDa
                 ) : (
                     <div className="space-y-4">
                         {posts.map((post) => (
-                            <div key={post.id} className="border rounded-lg p-4 hover:bg-primary-subtle transition-colors">
+                            <button
+                                key={post.id}
+                                type="button"
+                                onClick={() => onOpenPost(post)}
+                                className="w-full cursor-pointer rounded-lg border p-4 text-left transition-colors hover:bg-primary-subtle"
+                            >
                                 <div className="flex items-start gap-4">
                                     {/* Thumbnail - Fixed Size */}
                                     {post.images && post.images.length > 0 && (
@@ -56,16 +62,16 @@ export function PostsCard({ posts, onAddPost, onEditPost, onDeletePost, formatDa
                                     </div>
 
                                     {/* Actions (Right Side) */}
-                                    <div className="flex flex-col gap-2 flex-shrink-0 ml-2">
-                                        <Button variant="ghost" size="icon" onClick={() => onEditPost(post)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                    <div className="ml-2 flex flex-shrink-0 flex-col gap-2">
+                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEditPost(post) }} className="h-8 w-8 text-muted-foreground hover:text-foreground">
                                             <Edit className="h-5 w-5" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => onDeletePost(post.id)} className="h-8 w-8 text-muted-foreground hover:text-red-600">
+                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDeletePost(post.id) }} className="h-8 w-8 text-muted-foreground hover:text-red-600">
                                             <Trash2 className="h-5 w-5" />
                                         </Button>
                                     </div>
                                 </div>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 )}

@@ -45,6 +45,7 @@ export function FilterPanel({ onApply, compact = false }: FilterPanelProps) {
     location,
     filters,
     updateLocation,
+    updateFilters,
     addServiceFilter,
     removeServiceFilter,
     updateSearchQuery,
@@ -255,6 +256,29 @@ export function FilterPanel({ onApply, compact = false }: FilterPanelProps) {
               </Badge>
             )
           })}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className={labelCls}>Minimum értékelés</Label>
+          <span className={cn("font-medium", compact ? "text-xs" : "text-sm")}>
+            {filters.rating ? `${filters.rating.toFixed(1)}+` : "Mindegy"}
+          </span>
+        </div>
+        <Slider
+          value={[filters.rating ?? 0]}
+          onValueChange={(values) => updateFilters({ rating: values[0] > 0 ? values[0] : null })}
+          max={5}
+          min={0}
+          step={0.5}
+          className="py-1"
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground">
+          <span>Mindegy</span>
+          <span>3.0+</span>
+          <span>4.0+</span>
+          <span>5.0</span>
         </div>
       </div>
     </div>

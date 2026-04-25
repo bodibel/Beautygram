@@ -1,9 +1,20 @@
 import type React from "react"
 import {
-  LayoutGrid, Users, Heart, Briefcase, User, Store,
-  Settings, Calendar, Image as ImageIcon, FileText,
-  Info, BarChart3, MessageSquare,
-  Filter, CreditCard
+  LayoutGrid,
+  Users,
+  Heart,
+  Briefcase,
+  User,
+  Store,
+  Settings,
+  Calendar,
+  Image as ImageIcon,
+  FileText,
+  Info,
+  BarChart3,
+  MessageSquare,
+  Filter,
+  CreditCard,
 } from "lucide-react"
 
 export interface NavLink {
@@ -21,11 +32,13 @@ export const visitorLinks: NavLink[] = [
 
 export const authLinks: NavLink[] = [
   { href: "/dashboard/messages", label: "Üzenetek", icon: MessageSquare, badge: "unread-messages" },
+  { href: "/account/bookings", label: "Foglalások", icon: Calendar },
   { href: "/dashboard/favorites", label: "Kedvencek", icon: Heart },
 ]
 
 export const loggedInVisitorLinks: NavLink[] = [
   { href: "/profile/me", label: "Profilom", icon: User },
+  { href: "/dashboard/salons", label: "Vállalkozásom", icon: Store },
 ]
 
 export const providerLinks: NavLink[] = [
@@ -36,6 +49,7 @@ export const providerLinks: NavLink[] = [
 
 export const adminLinks: NavLink[] = [
   { href: "/dashboard/admin/overview", label: "Áttekintés", icon: BarChart3 },
+  { href: "/dashboard/admin/audit-log", label: "Audit Log", icon: FileText },
   { href: "/dashboard/admin/providers", label: "Szolgáltatók", icon: Briefcase },
   { href: "/dashboard/admin/visitors", label: "Látogatók", icon: Users },
   { href: "/dashboard/admin/settings", label: "Beállítások", icon: Settings },
@@ -44,7 +58,7 @@ export const adminLinks: NavLink[] = [
 export function getSalonLinks(salonId: string): NavLink[] {
   return [
     { href: `/salon/${salonId}`, label: "Áttekintés", icon: BarChart3 },
-    { href: "/dashboard/messages", label: "Üzenetek", icon: MessageSquare, badge: "unread-messages" },
+    { href: `/salon/${salonId}/messages`, label: "Üzenetek", icon: MessageSquare, badge: "unread-messages" },
     { href: `/salon/${salonId}/posts`, label: "Bejegyzéseim", icon: FileText },
     { href: `/salon/${salonId}/settings`, label: "Adatok", icon: Info },
     { href: `/salon/${salonId}/services`, label: "Szolgáltatások", icon: Briefcase },

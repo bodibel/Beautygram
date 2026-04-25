@@ -3,8 +3,9 @@
 import prisma from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { authOptions } from "@/lib/auth-options"
 import { requireSession } from "@/lib/auth-utils"
+import bcrypt from "bcryptjs"
 
 async function isAdmin() {
     const session = await getServerSession(authOptions)
@@ -35,6 +36,52 @@ export async function updateProfile(userId: string, data: { name?: string }) {
     } catch (error) {
         console.error("Error updating profile:", error)
         return { success: false, error: "Nem sikerült a profil frissítése." }
+    }
+}
+
+export async function changePassword(userId: string, data: { currentPassword: string, newPassword: string }) {
+    const sessionUserId = await requireSession()
+    if (sessionUserId !== userId) {
+        throw new Error("Nincs jogosultságod ezt a jelszót módosítani.")
+    }
+
+    const currentPassword = data.currentPassword?.trim()
+    const newPassword = data.newPassword?.trim()
+
+    if (!currentPassword || !newPassword) {
+        return { success: false, error: "A jelszó módosításához tölts ki minden mezőt." }
+    }
+
+    if (newPassword.length < 8) {
+        return { success: false, error: "Az új jelszónak legalább 8 karakter hosszúnak kell lennie." }
+    }
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { password: true }
+        })
+
+        if (!user?.password) {
+            return { success: false, error: "Ehhez a fiókhoz jelenleg nem érhető el a jelszó módosítása." }
+        }
+
+        const isValid = await bcrypt.compare(currentPassword, user.password)
+        if (!isValid) {
+            return { success: false, error: "A jelenlegi jelszó nem megfelelő." }
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10)
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword }
+        })
+
+        return { success: true }
+    } catch (error) {
+        console.error("Error changing password:", error)
+        return { success: false, error: "Nem sikerült a jelszó frissítése." }
     }
 }
 

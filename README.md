@@ -1,36 +1,150 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GlowySpot
 
-## Getting Started
+GlowySpot is a `Next.js 16 + React 19 + Prisma + PostgreSQL` beauty discovery platform focused on provider onboarding, public salon discovery, simple contact messaging, and appointment requests.
 
-First, run the development server:
+## Stack
+
+- Next.js 16
+- React 19
+- TypeScript
+- Prisma + PostgreSQL
+- NextAuth
+- Tailwind CSS
+- Resend
+- OpenAI image moderation/relevance checks
+- Google Maps Places API
+
+## What is in scope today
+
+- public discovery feed
+- public provider/salon profile pages
+- provider onboarding and salon management
+- simple contact messaging
+- appointment request flow
+- admin audit log foundation
+
+## Local setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create your local env file from the example:
+
+```bash
+cp .env.example .env
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+3. Start PostgreSQL.
+
+- You can run the local database with Docker Compose:
+
+```bash
+docker compose up -d glowyspot-db
+```
+
+4. Apply Prisma migrations:
+
+```bash
+npx prisma migrate dev
+```
+
+5. Optional: seed the database:
+
+```bash
+npx prisma db seed
+```
+
+6. Start the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app will be available at [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Use `.env.example` as the source of truth for required local variables.
 
-## Learn More
+Important keys:
 
-To learn more about Next.js, take a look at the following resources:
+- `DATABASE_URL`
+- `NEXTAUTH_URL`
+- `NEXTAUTH_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+- `OPENAI_API_KEY`
+- `RESEND_API_KEY`
+- `EMAIL_FROM`
+- `CRON_SECRET`
+- `UPLOAD_DIR` (optional)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Prisma and migrations
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Prisma schema lives in `prisma/schema.prisma`
+- Committed migrations live in `prisma/migrations`
+- Before pushing deployment-related changes, verify migrations apply cleanly against a fresh database
 
-## Deploy on Vercel
+Useful commands:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npx prisma migrate dev
+npx prisma migrate deploy
+npx prisma generate
+npx prisma studio
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Run and build commands
+
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+```
+
+## Upload and local storage note
+
+The current upload flow stores image files on the local filesystem and serves them from `/public/uploads` or from `UPLOAD_DIR/uploads`.
+
+Implications for deployment:
+
+- local uploads are not object storage
+- the upload directory must be writable by the app process
+- uploaded files must be mounted/persisted separately on VPS or Docker deployments
+- ephemeral container storage is not sufficient if uploads must survive restarts
+
+The current VPS compose file already mounts:
+
+- `./public/uploads:/app/public/uploads`
+
+Keep that behavior in mind before deployment. This repository does not yet include a cloud object-storage integration.
+
+## Deployment note
+
+This repository includes Docker-related files for later VPS deployment, but this README does not claim the project is production-ready by default.
+
+Before VPS deployment, at minimum verify:
+
+- env variables are set correctly
+- Prisma migrations apply successfully
+- auth flows work against the target domain
+- upload directory persistence is configured
+- cron secret is configured
+- email and moderation integrations are valid in the target environment
+
+## Repository hygiene note
+
+- Do not commit real `.env` files
+- Do not commit `public/uploads`
+- Do not commit local database or build artifacts

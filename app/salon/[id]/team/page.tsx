@@ -146,8 +146,8 @@ export default function SalonTeamPage({ params }: { params: Promise<{ id: string
 
     if (loading) {
         return (
-            <MainLayout>
-                <div className="container mx-auto p-6">
+            <MainLayout showRightSidebar={false} fullWidth>
+                <div className="w-full max-w-4xl p-6 lg:mr-auto">
                     <div className="text-muted-foreground">Betöltés...</div>
                 </div>
             </MainLayout>
@@ -160,8 +160,8 @@ export default function SalonTeamPage({ params }: { params: Promise<{ id: string
     }
 
     return (
-        <MainLayout showRightSidebar={false}>
-            <div className="container mx-auto p-6 md:p-8 max-w-4xl">
+        <MainLayout showRightSidebar={false} fullWidth>
+            <div className="w-full max-w-4xl p-6 md:p-8 lg:mr-auto">
                 <div className="flex items-center justify-between mb-6">
                     <h1 className="text-3xl font-bold">Csapat / Rólam</h1>
                     <Button

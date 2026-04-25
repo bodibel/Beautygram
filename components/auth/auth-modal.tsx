@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { useEffect, useMemo, useState } from "react"
+import { getProviders, signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Modal } from "@/components/ui/modal"
@@ -14,7 +15,31 @@ interface AuthModalProps {
     onClose: () => void
 }
 
+function GoogleIcon() {
+    return (
+        <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24">
+            <path
+                d="M21.805 10.023H12.24v3.955h5.48c-.236 1.273-.958 2.352-2.042 3.072v2.55h3.3c1.932-1.78 3.047-4.4 3.047-7.52 0-.693-.062-1.36-.22-2.057Z"
+                fill="#4285F4"
+            />
+            <path
+                d="M12.24 22c2.76 0 5.078-.91 6.77-2.4l-3.3-2.55c-.917.618-2.09.982-3.47.982-2.667 0-4.93-1.8-5.738-4.22H3.09v2.63A10.225 10.225 0 0 0 12.24 22Z"
+                fill="#34A853"
+            />
+            <path
+                d="M6.502 13.81a6.133 6.133 0 0 1-.32-1.81c0-.63.115-1.24.32-1.81V7.56H3.09a10.23 10.23 0 0 0 0 8.88l3.412-2.63Z"
+                fill="#FBBC05"
+            />
+            <path
+                d="M12.24 5.968c1.502 0 2.847.517 3.908 1.533l2.93-2.93C17.313 2.91 15 2 12.24 2A10.225 10.225 0 0 0 3.09 7.56l3.412 2.63c.808-2.42 3.07-4.22 5.738-4.22Z"
+                fill="#EA4335"
+            />
+        </svg>
+    )
+}
+
 export function AuthModal({ isOpen, onClose }: AuthModalProps) {
+    const router = useRouter()
     const [activeTab, setActiveTab] = useState<"login" | "register" | "forgot_password">("login")
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -25,14 +50,56 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [googleEnabled, setGoogleEnabled] = useState(false)
+    const [providersLoaded, setProvidersLoaded] = useState(false)
+
+    useEffect(() => {
+        let active = true
+
+        async function loadProviders() {
+            try {
+                const providers = await getProviders()
+                if (!active) return
+                setGoogleEnabled(Boolean(providers?.google))
+            } catch (providerError) {
+                if (!active) return
+                setGoogleEnabled(false)
+            } finally {
+                if (active) {
+                    setProvidersLoaded(true)
+                }
+            }
+        }
+
+        if (isOpen) {
+            loadProviders()
+        }
+
+        return () => {
+            active = false
+        }
+    }, [isOpen])
+
+    const feedbackClassName = useMemo(() => {
+        return error.startsWith("Sikeres:")
+            ? "mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+            : "mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600"
+    }, [error])
 
     const handleGoogleLogin = async () => {
+        setError("")
+
+        if (!googleEnabled) {
+            setError("A Google bejelentkezés jelenleg nincs beállítva.")
+            return
+        }
+
         try {
             setLoading(true)
-            await signIn("google", { callbackUrl: "/" })
+            const callbackUrl = `${window.location.origin}${window.location.pathname}`
+            await signIn("google", { callbackUrl })
         } catch (err: any) {
-            setError(err.message)
-        } finally {
+            setError(err?.message || "A Google bejelentkezés nem sikerült.")
             setLoading(false)
         }
     }
@@ -46,13 +113,14 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             const result = await signIn("credentials", {
                 email,
                 password,
-                redirect: false
+                redirect: false,
             })
 
             if (result?.error) {
                 setError("Hibás email vagy jelszó!")
             } else {
                 onClose()
+                router.refresh()
             }
         } catch (err: any) {
             console.error("Login error:", err)
@@ -76,8 +144,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             const regResult = await registerUser({
                 email,
                 name,
-                role: email === "admin@glowyspot.com" ? "admin" : role,
-                password
+                password,
             })
 
             if (regResult.error) {
@@ -86,11 +153,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 return
             }
 
-            // Auto login after registration
             const result = await signIn("credentials", {
                 email,
                 password,
-                redirect: false
+                redirect: false,
             })
 
             if (result?.error) {
@@ -99,6 +165,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             }
 
             onClose()
+            router.refresh()
         } catch (err: any) {
             console.error("Registration error:", err)
             setError(err.message || "Hiba történt a regisztráció során.")
@@ -110,7 +177,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const handleForgotPassword = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!email) {
-            setError("Kérjük, adja meg az email címét!")
+            setError("Kérjük, add meg az email címedet!")
             return
         }
 
@@ -122,8 +189,6 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             if (result.error) {
                 setError(result.error)
             } else {
-                // Show success message in the error box but styled positively? 
-                // Let's just use setError for simplicity but prefix it
                 setError("Sikeres: " + result.success)
             }
         } catch (err: any) {
@@ -134,31 +199,58 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         }
     }
 
+    const googleButtonLabel =
+        activeTab === "register" ? "Regisztráció Google-fiókkal" : "Bejelentkezés Google-fiókkal"
+
+    const renderGoogleButton = () => (
+        <Button
+            type="button"
+            variant="outline"
+            className="h-12 w-full justify-center gap-3 rounded-xl border border-[#dadce0] bg-white font-medium text-[#3c4043] shadow-none hover:bg-[#f8f9fa] hover:text-[#202124]"
+            onClick={handleGoogleLogin}
+            disabled={loading || !providersLoaded}
+        >
+            <GoogleIcon />
+            <span>{googleButtonLabel}</span>
+        </Button>
+    )
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={activeTab === "login" ? "Bejelentkezés" : activeTab === "register" ? "Regisztráció" : "Jelszó visszaállítása"}>
-            <div className="flex space-x-2 mb-6 border-b">
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={
+                activeTab === "login"
+                    ? "Bejelentkezés"
+                    : activeTab === "register"
+                      ? "Regisztráció"
+                      : "Jelszó visszaállítása"
+            }
+        >
+            <div className="mb-6 flex space-x-2 border-b">
                 <button
-                    className={`pb-2 px-4 text-sm font-medium transition-colors ${activeTab === "login"
-                        ? "border-b-2 border-primary text-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                        }`}
+                    className={`pb-2 px-4 text-sm font-medium transition-colors ${
+                        activeTab === "login"
+                            ? "border-b-2 border-primary text-primary"
+                            : "text-muted-foreground hover:text-foreground"
+                    }`}
                     onClick={() => setActiveTab("login")}
                 >
                     Bejelentkezés
                 </button>
                 <button
-                    className={`pb-2 px-4 text-sm font-medium transition-colors ${activeTab === "register"
-                        ? "border-b-2 border-primary text-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                        }`}
+                    className={`pb-2 px-4 text-sm font-medium transition-colors ${
+                        activeTab === "register"
+                            ? "border-b-2 border-primary text-primary"
+                            : "text-muted-foreground hover:text-foreground"
+                    }`}
                     onClick={() => setActiveTab("register")}
                 >
                     Regisztráció
                 </button>
             </div>
 
-            {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
+            {error && <div className={feedbackClassName}>{error}</div>}
 
             {activeTab === "login" ? (
                 <form onSubmit={handleLogin} className="space-y-4">
@@ -191,7 +283,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <div className="flex justify-end">
                         <button
                             type="button"
-                            onClick={() => { setActiveTab("forgot_password"); setError(""); }}
+                            onClick={() => {
+                                setActiveTab("forgot_password")
+                                setError("")
+                            }}
                             className="text-xs text-primary hover:underline"
                         >
                             Elfelejtett jelszó?
@@ -208,9 +303,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             <span className="bg-white px-2 text-muted-foreground">Vagy</span>
                         </div>
                     </div>
-                    <Button type="button" variant="outline" className="w-full" onClick={handleGoogleLogin}>
-                        Bejelentkezés Google fiókkal
-                    </Button>
+                    {renderGoogleButton()}
                 </form>
             ) : activeTab === "register" ? (
                 <form onSubmit={handleRegister} className="space-y-4">
@@ -301,14 +394,12 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             <span className="bg-white px-2 text-muted-foreground">Vagy</span>
                         </div>
                     </div>
-                    <Button type="button" variant="outline" className="w-full" onClick={handleGoogleLogin}>
-                        Regisztráció Google fiókkal
-                    </Button>
+                    {renderGoogleButton()}
                 </form>
             ) : (
                 <form onSubmit={handleForgotPassword} className="space-y-4">
-                    <p className="text-sm text-muted-foreground mb-4">
-                        Adja meg az email címét, és küldünk egy linket a jelszava visszaállításához.
+                    <p className="mb-4 text-sm text-muted-foreground">
+                        Add meg az email címedet, és küldünk egy linket a jelszavad visszaállításához.
                     </p>
                     <div className="space-y-2">
                         <Input
@@ -322,10 +413,13 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <Button className="w-full" disabled={loading}>
                         {loading ? "Küldés..." : "Link küldése"}
                     </Button>
-                    <div className="flex justify-center mt-2">
-                         <button
+                    <div className="mt-2 flex justify-center">
+                        <button
                             type="button"
-                            onClick={() => { setActiveTab("login"); setError(""); }}
+                            onClick={() => {
+                                setActiveTab("login")
+                                setError("")
+                            }}
                             className="text-sm text-muted-foreground hover:text-foreground hover:underline"
                         >
                             Vissza a bejelentkezéshez
@@ -334,60 +428,72 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 </form>
             )}
 
-            <div className="mt-6 p-4 bg-muted rounded-lg text-xs space-y-3">
-                <p className="font-semibold mb-2">Teszt fiókok (Gyors betöltés):</p>
+            <div className="mt-6 space-y-3 rounded-lg bg-muted p-4 text-xs">
+                <p className="mb-2 font-semibold">Teszt fiókok (Gyors betöltés):</p>
 
                 <div className="grid grid-cols-1 gap-2">
                     <Button
                         variant="secondary"
                         size="sm"
-                        className="justify-between h-auto py-2"
-                        onClick={() => { setEmail("admin@glowyspot.com"); setPassword("password123"); }}
+                        className="h-auto justify-between py-2"
+                        onClick={() => {
+                            setEmail("admin@glowyspot.com")
+                            setPassword("password123")
+                        }}
                     >
                         <div className="text-left">
                             <div className="font-medium">Admin</div>
-                            <div className="text-muted-foreground text-[10px]">admin@glowyspot.com</div>
+                            <div className="text-[10px] text-muted-foreground">admin@glowyspot.com</div>
                         </div>
-                        <span className="text-primary font-bold ml-2">Betöltés</span>
+                        <span className="ml-2 font-bold text-primary">Betöltés</span>
                     </Button>
 
                     <Button
                         variant="secondary"
                         size="sm"
-                        className="justify-between h-auto py-2"
-                        onClick={() => { setEmail("provider1@glowyspot.com"); setPassword("password123"); }}
+                        className="h-auto justify-between py-2"
+                        onClick={() => {
+                            setEmail("provider1@glowyspot.com")
+                            setPassword("password123")
+                        }}
                     >
                         <div className="text-left">
                             <div className="font-medium">Szolgáltató</div>
-                            <div className="text-muted-foreground text-[10px]">provider1@glowyspot.com</div>
+                            <div className="text-[10px] text-muted-foreground">provider1@glowyspot.com</div>
                         </div>
-                        <span className="text-primary font-bold ml-2">Betöltés</span>
+                        <span className="ml-2 font-bold text-primary">Betöltés</span>
                     </Button>
 
                     <Button
                         variant="secondary"
                         size="sm"
-                        className="justify-between h-auto py-2"
-                        onClick={() => { setEmail("single_provider@glowyspot.com"); setPassword("password123"); }}
+                        className="h-auto justify-between py-2"
+                        onClick={() => {
+                            setEmail("single_provider@glowyspot.com")
+                            setPassword("password123")
+                        }}
                     >
                         <div className="text-left">
                             <div className="font-medium">1 Szalonos Szolg.</div>
-                            <div className="text-muted-foreground text-[10px]">single_provider@glowyspot.com</div>
+                            <div className="text-[10px] text-muted-foreground">single_provider@glowyspot.com</div>
                         </div>
-                        <span className="text-primary font-bold ml-2">Betöltés</span>
+                        <span className="ml-2 font-bold text-primary">Betöltés</span>
                     </Button>
 
                     <Button
                         variant="secondary"
                         size="sm"
-                        className="justify-between h-auto py-2"
-                        onClick={() => { setEmail("visitor1@glowyspot.com"); setPassword("password123"); }}
+                        className="h-auto justify-between py-2"
+                        onClick={() => {
+                            setEmail("visitor1@glowyspot.com")
+                            setPassword("password123")
+                        }}
                     >
                         <div className="text-left">
                             <div className="font-medium">Látogató</div>
-                            <div className="text-muted-foreground text-[10px]">visitor1@glowyspot.com</div>
+                            <div className="text-[10px] text-muted-foreground">visitor1@glowyspot.com</div>
                         </div>
-                        <span className="text-primary font-bold ml-2">Betöltés</span>
+                        <span className="ml-2 font-bold text-primary">Betöltés</span>
                     </Button>
                 </div>
             </div>

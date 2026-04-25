@@ -22,6 +22,7 @@ import { WizardProgress } from "./WizardProgress"
 import { WizardStep } from "./WizardStep"
 import { SafetyWarningModal } from "@/components/ui/SafetyWarningModal"
 import { uploadFile } from "@/lib/upload"
+import { useSession } from "next-auth/react"
 
 const MAP_LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"]
 
@@ -80,6 +81,7 @@ interface GalleryImage {
 
 export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
     const { userData } = useAuth()
+    const { update } = useSession()
     const [currentStep, setCurrentStep] = useState(0)
     const [loading, setLoading] = useState(false)
 
@@ -469,6 +471,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
             
             toast.dismiss(loadingToast);
             toast.success("Szalon sikeresen létrehozva!")
+            await update()
             onSuccess()
             onClose()
         } catch (error) {

@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
 import { Check, Crown, Zap, Gift, ArrowRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth-context"
+import { useRouter } from "next/navigation"
+import { getUserSalons } from "@/lib/actions/salon"
 
 const plans = [
   {
@@ -100,8 +102,33 @@ const colorMap = {
 }
 
 export default function SubscriptionPage() {
+  const { userData } = useAuth()
+  const router = useRouter()
   const [currency, setCurrency] = useState<"huf" | "eur">("huf")
   const [loading, setLoading] = useState<string | null>(null)
+  const [checkingAccess, setCheckingAccess] = useState(true)
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!userData?.id) return
+
+      try {
+        const salons = await getUserSalons(userData.id)
+        if (!salons || salons.length === 0) {
+          router.replace("/dashboard/salons")
+          return
+        }
+      } catch (error) {
+        console.error("Error checking subscription access:", error)
+        router.replace("/dashboard/salons")
+        return
+      }
+
+      setCheckingAccess(false)
+    }
+
+    checkAccess()
+  }, [userData?.id, router])
 
   const handleSubscribe = async (planId: string) => {
     if (planId === "FREE") return
@@ -115,6 +142,16 @@ export default function SubscriptionPage() {
     // window.location.href = url
     alert("Stripe integráció hamarosan elérhető!")
     setLoading(null)
+  }
+
+  if (checkingAccess) {
+    return (
+      <MainLayout showRightSidebar={false}>
+        <div className="max-w-5xl mx-auto px-4 py-12">
+          <div className="text-center text-gray-500">Betöltés...</div>
+        </div>
+      </MainLayout>
+    )
   }
 
   return (

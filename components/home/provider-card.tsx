@@ -6,6 +6,7 @@ import { Star, MapPin, Globe } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import { FavoriteButton } from "@/components/salon/FavoriteButton"
+import { normalizeImageSrc } from "@/lib/image-utils"
 
 interface ProviderCardProps {
     id: string
@@ -22,6 +23,8 @@ interface ProviderCardProps {
 
 export function ProviderCard({ id, slug, name, category, rating, reviewCount, location, image, avatar, languages }: ProviderCardProps) {
     const [hovered, setHovered] = useState(false)
+    const normalizedImage = normalizeImageSrc(image) || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&q=80"
+    const normalizedAvatar = normalizeImageSrc(avatar) || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80"
 
     return (
         <Link href={`/profile/${slug}`} className="block h-full">
@@ -44,7 +47,7 @@ export function ProviderCard({ id, slug, name, category, rating, reviewCount, lo
                     {/* Image */}
                     <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
                         <Image
-                            src={image}
+                            src={normalizedImage}
                             alt={name}
                             fill
                             className="object-cover"
@@ -69,7 +72,7 @@ export function ProviderCard({ id, slug, name, category, rating, reviewCount, lo
                         <div className="flex justify-between items-start gap-3">
                             <div className="relative -mt-14 mb-1">
                                 <div className="relative h-20 w-20 rounded-full border-4 border-white shadow-sm overflow-hidden bg-white">
-                                    <Image src={avatar} alt={name} fill className="object-cover" sizes="64px" />
+                                    <Image src={normalizedAvatar} alt={name} fill className="object-cover" sizes="64px" />
                                 </div>
                             </div>
                             <div className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100 mt-1">

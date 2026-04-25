@@ -29,6 +29,7 @@ interface FilterContextType {
     removeServiceFilter: (service: string) => void
     updateSearchQuery: (query: string) => void
     clearFilters: () => void
+    resetFiltersAndLocation: () => void
 }
 
 const FilterContext = createContext<FilterContextType | undefined>(undefined)
@@ -86,6 +87,11 @@ export function FilterProvider({ children }: { children: ReactNode }) {
         setFilters(defaultFilters)
     }
 
+    const resetFiltersAndLocation = () => {
+        setFilters(defaultFilters)
+        setLocation(defaultLocation)
+    }
+
     return (
         <FilterContext.Provider
             value={{
@@ -99,6 +105,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
                 removeServiceFilter,
                 updateSearchQuery,
                 clearFilters,
+                resetFiltersAndLocation,
             }}
         >
             {children}
