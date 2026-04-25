@@ -8,6 +8,15 @@ export function useSalonData(salonId: string, userId: string | undefined) {
     const [openingHours, setOpeningHours] = useState<OpeningHour[]>([])
     const [closedDates, setClosedDates] = useState<ClosedDate[]>([])
     const [posts, setPosts] = useState<Post[]>([])
+    const [visitorStats, setVisitorStats] = useState<{
+        totalViews: number
+        todayViews: number
+        series: Array<{ date: string; label: string; fullLabel: string; count: number }>
+    }>({
+        totalViews: 0,
+        todayViews: 0,
+        series: [],
+    })
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -35,6 +44,7 @@ export function useSalonData(salonId: string, userId: string | undefined) {
                 setOpeningHours(result.openingHours as unknown as OpeningHour[])
                 setClosedDates(result.closedDates as unknown as ClosedDate[])
                 setPosts(result.posts as unknown as Post[])
+                setVisitorStats(result.visitorStats ?? { totalViews: 0, todayViews: 0, series: [] })
             }
         } catch (error) {
             console.error("Error loading salon data:", error)
@@ -54,6 +64,7 @@ export function useSalonData(salonId: string, userId: string | undefined) {
         setClosedDates,
         posts,
         setPosts,
+        visitorStats,
         loading,
         reload: loadSalonData
     }

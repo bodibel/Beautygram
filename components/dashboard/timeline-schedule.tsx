@@ -1,53 +1,103 @@
 "use client"
 
-import { Clock } from "lucide-react"
-import Image from "next/image"
+import { CalendarClock, Clock3, CheckCircle2, XCircle, Hourglass } from "lucide-react"
 
-const SCHEDULE = [
-    { time: "10:00 AM", status: "ONGOING", client: "Elena Rodriguez", service: "Full Balayage & Toning", avatar: "https://images.unsplash.com/photo-1573496359-e36b3c09e741?w=100", active: true },
-    { time: "11:30 AM", status: "Upcoming", client: "Marcus Chen", service: "Signature Sculpt & Fade", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100", active: false },
-    { time: "01:00 PM", status: "Upcoming", client: "Sarah Jenkins", service: "Bridal Makeup Trial", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100", active: false },
-]
+type ScheduleItem = {
+    id: string
+    userName: string | null
+    serviceName: string | null
+    date: string | Date
+    status: string
+    message?: string | null
+}
 
-export function TimelineSchedule() {
+type TimelineScheduleProps = {
+    bookings: ScheduleItem[]
+}
+
+const STATUS_META: Record<string, { label: string; className: string; icon: typeof Hourglass }> = {
+    pending: {
+        label: "Függőben",
+        className: "bg-amber-50 text-amber-700 border-amber-200",
+        icon: Hourglass,
+    },
+    accepted: {
+        label: "Elfogadva",
+        className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+        icon: CheckCircle2,
+    },
+    rejected: {
+        label: "Elutasítva",
+        className: "bg-rose-50 text-rose-700 border-rose-200",
+        icon: XCircle,
+    },
+}
+
+export function TimelineSchedule({ bookings }: TimelineScheduleProps) {
+    const upcomingBookings = [...bookings]
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(0, 5)
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h3 className="font-bold text-xl text-gray-900">Upcoming Schedule</h3>
-                <button className="text-sm font-bold text-primary hover:underline">View Full Calendar</button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h3 className="text-xl font-bold text-gray-900">Következő időpontkérések</h3>
+                    <p className="text-sm text-gray-500">A legközelebbi beérkezett foglalási kérések és állapotaik.</p>
+                </div>
+                <div className="rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
+                    {bookings.length} összes kérés
+                </div>
             </div>
 
-            <div className="relative space-y-4 before:absolute before:inset-y-0 before:left-[19px] before:w-[2px] before:bg-gray-100">
-                {SCHEDULE.map((item, idx) => (
-                    <div key={idx} className="relative pl-12">
-                        {/* Timeline Dot */}
-                        <div className={`absolute left-0 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full border-4 border-white flex items-center justify-center ${item.active ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-gray-100 text-gray-400"}`}>
-                            <Clock className="h-4 w-4" />
-                        </div>
+            {upcomingBookings.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm">
+                        <CalendarClock className="h-6 w-6 text-gray-300" />
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-900">Még nincs időpontkérés</h4>
+                    <p className="mt-2 text-sm text-gray-500">Amint érkezik új kérés, itt rögtön látni fogod.</p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {upcomingBookings.map((item) => {
+                        const statusMeta = STATUS_META[item.status] || STATUS_META.pending
+                        const StatusIcon = statusMeta.icon
 
-                        {/* Card */}
-                        <div className={`flex items-center justify-between rounded-3xl p-5 transition-shadow ${item.active ? "bg-white shadow-md ring-1 ring-primary/10" : "bg-white border border-gray-100"}`}>
-                            <div className="flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-2xl overflow-hidden bg-gray-100 relative">
-                                    <Image src={item.avatar} alt={item.client} fill className="object-cover" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-sm font-bold text-gray-500">{item.time}</span>
-                                        {item.active && <span className="text-[10px] font-bold text-white bg-accent px-2 py-0.5 rounded-full">ONGOING</span>}
+                        return (
+                            <div key={item.id} className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="min-w-0 space-y-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-sm font-bold text-gray-900">
+                                                {item.userName || "Ismeretlen vendég"}
+                                            </span>
+                                            <span
+                                                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${statusMeta.className}`}
+                                            >
+                                                <StatusIcon className="h-3.5 w-3.5" />
+                                                {statusMeta.label}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
+                                            <span className="flex items-center gap-1.5">
+                                                <Clock3 className="h-4 w-4 text-primary" />
+                                                {new Date(item.date).toLocaleDateString("hu-HU")}
+                                            </span>
+                                            <span>{item.serviceName || "Nincs megadott szolgáltatás"}</span>
+                                        </div>
+
+                                        <p className="text-sm text-gray-600">
+                                            {item.message?.trim() || "Nincs külön megjegyzés a kéréshez."}
+                                        </p>
                                     </div>
-                                    <h4 className="font-bold text-gray-900">{item.client}</h4>
-                                    <p className="text-sm text-gray-500">{item.service}</p>
                                 </div>
                             </div>
-
-                            <button className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${item.active ? "bg-primary text-white hover:bg-primary shadow-md shadow-primary/20" : "bg-gray-50 text-gray-600 hover:bg-gray-100"}`}>
-                                {item.active ? "Check-In" : "Reschedule"}
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                        )
+                    })}
+                </div>
+            )}
         </div>
     )
 }

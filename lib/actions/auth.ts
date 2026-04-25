@@ -3,8 +3,9 @@
 import { sendWelcomeEmail } from "@/lib/mail"
 import prisma from "@/lib/db"
 import bcrypt from "bcryptjs"
+import { writeAuditLog } from "@/lib/audit-log"
 
-export async function registerUser(data: { email: string; name: string; role: string; password?: string }) {
+export async function registerUser(data: { email: string; name: string; password?: string }) {
     try {
         const existingUser = await prisma.user.findUnique({
             where: { email: data.email }
@@ -23,15 +24,23 @@ export async function registerUser(data: { email: string; name: string; role: st
             data: {
                 email: data.email,
                 name: data.name,
-                role: data.role,
+                role: "visitor",
                 password: hashedPassword
             }
         })
 
+        await writeAuditLog({
+            action: "REGISTER",
+            userId: user.id,
+            entity: "USER",
+            entityId: user.id,
+            metadata: { email: data.email }
+        })
+
         try {
             await sendWelcomeEmail(data.email, user.name || "Felhasználó")
-        } catch(emailError) {
-             console.error("Failed to send welcome email:", emailError)
+        } catch (emailError) {
+            console.error("Failed to send welcome email:", emailError)
         }
 
         return { success: true, user }

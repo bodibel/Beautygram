@@ -1,62 +1,83 @@
 "use client"
 
-import { Plus, Wand2, CheckCircle2 } from "lucide-react"
+import { Camera, FileText, Image as ImageIcon, Sparkles } from "lucide-react"
 import Image from "next/image"
 
-const SAMPLE_IMAGES = [
-    "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200",
-    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=200",
-    "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=200",
-    "https://images.unsplash.com/photo-1582242542187-50b31057865f?w=200",
-    "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200",
-    "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=200",
-]
+type PortfolioVibeWidgetProps = {
+    images: string[]
+    postsCount: number
+    servicesCount: number
+    totalInteractions: number
+}
 
-export function PortfolioVibeWidget() {
+export function PortfolioVibeWidget({
+    images,
+    postsCount,
+    servicesCount,
+    totalInteractions,
+}: PortfolioVibeWidgetProps) {
+    const previewImages = images.slice(0, 6)
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h3 className="font-bold text-xl text-gray-900">Portfolio Manager</h3>
-                <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">New Upload</span>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-xl font-bold text-gray-900">Portfólió összegzés</h3>
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary">
+                    {images.length} kép
+                </span>
             </div>
 
-            <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h4 className="font-bold text-gray-900">Vibe Check Tool</h4>
-                        <p className="text-xs text-gray-500">Aesthetic consistency analysis</p>
-                    </div>
-                    <div className="flex items-center gap-1 bg-green-50 text-green-600 px-3 py-1.5 rounded-full text-sm font-bold border border-green-100">
-                        <CheckCircle2 className="h-4 w-4" /> 94% MATCH
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                    {SAMPLE_IMAGES.map((src, i) => (
-                        <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-gray-100">
-                            <Image src={src} alt="Portfolio" fill className="object-cover" />
+            <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl bg-gray-50 p-4">
+                        <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                            <FileText className="h-5 w-5" />
                         </div>
-                    ))}
-                    <button className="flex items-center justify-center aspect-square rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-primary/30 hover:text-primary hover:bg-primary-subtle transition-colors">
-                        <Plus className="h-6 w-6" />
-                    </button>
-                    <button className="flex items-center justify-center aspect-square rounded-xl border-2 border-dashed border-gray-200 text-primary/70 bg-primary/10 hover:bg-primary/20 transition-colors">
-                        <Wand2 className="h-6 w-6" />
-                    </button>
-                </div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Bejegyzések</p>
+                        <p className="mt-1 text-2xl font-black text-gray-900">{postsCount}</p>
+                    </div>
 
-                <div>
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Active Palette</span>
-                    <div className="flex gap-2">
-                        {["#eec7ba", "#bba19b", "#d61c69", "#1f1a1d", "#f5f5f5"].map(color => (
-                            <div key={color} className="h-8 w-12 rounded-full shadow-sm ring-1 ring-black/5" style={{ backgroundColor: color }} />
-                        ))}
+                    <div className="rounded-2xl bg-gray-50 p-4">
+                        <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+                            <Sparkles className="h-5 w-5" />
+                        </div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Interakciók</p>
+                        <p className="mt-1 text-2xl font-black text-gray-900">{totalInteractions}</p>
+                    </div>
+
+                    <div className="rounded-2xl bg-gray-50 p-4">
+                        <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-50 text-rose-500">
+                            <Camera className="h-5 w-5" />
+                        </div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Galéria képek</p>
+                        <p className="mt-1 text-2xl font-black text-gray-900">{images.length}</p>
+                    </div>
+
+                    <div className="rounded-2xl bg-gray-50 p-4">
+                        <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                            <ImageIcon className="h-5 w-5" />
+                        </div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Szolgáltatások</p>
+                        <p className="mt-1 text-2xl font-black text-gray-900">{servicesCount}</p>
                     </div>
                 </div>
 
-                <button className="w-full mt-6 bg-gray-900 text-white rounded-xl py-3 text-sm font-bold hover:bg-black transition-colors flex items-center justify-center gap-2">
-                    <Wand2 className="h-4 w-4" /> Optimize Feed Vibe
-                </button>
+                <div className="mt-6">
+                    <span className="mb-3 block text-xs font-bold uppercase tracking-widest text-gray-400">Portfólió előnézet</span>
+                    {previewImages.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-500">
+                            Még nincs feltöltött képed a portfólióban.
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-3 gap-3">
+                            {previewImages.map((src, i) => (
+                                <div key={`${src}-${i}`} className="relative aspect-square overflow-hidden rounded-xl bg-gray-100">
+                                    <Image src={src} alt="Portfólió kép" fill className="object-cover" />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     )

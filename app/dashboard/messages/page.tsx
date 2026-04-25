@@ -2,28 +2,30 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, Send, User, ChevronRight, MessageSquare, ShieldCheck, Mail, Inbox, AlertCircle } from "lucide-react"
+import { Search, Send, User, MessageSquare, ShieldCheck, Mail, Inbox } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { getUserMessages, sendMessage, markMessageAsRead, getAdminUser } from "@/lib/actions/salon"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { hu } from "date-fns/locale"
+import { AccountPageShell } from "@/components/account/account-page-shell"
+import { AccountEmptyState } from "@/components/account/account-empty-state"
 
 interface Thread {
-    id: string;
+    id: string
     otherUser: {
-        id: string;
-        name: string | null;
-        image: string | null;
-    };
-    lastMessage: any;
-    messages: any[];
-    unreadCount: number;
+        id: string
+        name: string | null
+        image: string | null
+    }
+    lastMessage: any
+    messages: any[]
+    unreadCount: number
 }
 
 export default function MessagesPage() {
@@ -34,9 +36,7 @@ export default function MessagesPage() {
     const [replyContent, setReplyContent] = useState("")
     const [sending, setSending] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
-    const [admin, setAdmin] = useState<{ id: string, name: string, image: string | null } | null>(null)
-
-    // Reference for scrolling
+    const [admin, setAdmin] = useState<{ id: string; name: string; image: string | null } | null>(null)
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
     const scrollToBottom = () => {
@@ -78,11 +78,10 @@ export default function MessagesPage() {
         }
     }, [userData?.id, loadMessages])
 
-    // Group messages into threads
     const threads: Thread[] = []
     const messagesMap = new Map<string, any[]>()
 
-    messages.forEach(msg => {
+    messages.forEach((msg) => {
         const otherUserId = msg.senderId === userData?.id ? msg.receiverId : msg.senderId
         if (!messagesMap.has(otherUserId)) {
             messagesMap.set(otherUserId, [])
@@ -100,24 +99,22 @@ export default function MessagesPage() {
             otherUser,
             lastMessage: lastMsg,
             messages: sortedMsgs,
-            unreadCount: msgs.filter(m => !m.isRead && m.receiverId === userData?.id).length
+            unreadCount: msgs.filter((m) => !m.isRead && m.receiverId === userData?.id).length,
         })
     })
 
-    // Sort threads by last message time
     threads.sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime())
 
-    const filteredThreads = threads.filter(t =>
+    const filteredThreads = threads.filter((t) =>
         t.otherUser.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.lastMessage.content.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
-    let activeThread = threads.find(t => t.id === activeThreadId)
+    let activeThread = threads.find((t) => t.id === activeThreadId)
 
-    // Effect to auto-read messages when thread is active and new messages arrive
     useEffect(() => {
         if (activeThread && userData?.id) {
-            const unreadMsgs = activeThread.messages.filter(m => !m.isRead && m.receiverId === userData.id)
+            const unreadMsgs = activeThread.messages.filter((m) => !m.isRead && m.receiverId === userData.id)
             if (unreadMsgs.length > 0) {
                 const readAll = async () => {
                     for (const msg of unreadMsgs) {
@@ -129,22 +126,28 @@ export default function MessagesPage() {
             }
             scrollToBottom()
         }
-    }, [activeThread?.messages.length, activeThreadId, userData?.id])
+    }, [activeThread?.messages.length, activeThreadId, userData?.id, loadMessages])
 
-    // If trying to message admin and no thread exists, create a dummy one
     if (!activeThread && activeThreadId && admin && activeThreadId === admin.id) {
         activeThread = {
             id: admin.id,
             otherUser: {
                 id: admin.id,
                 name: admin.name,
-                image: admin.image
+                image: admin.image,
             },
             lastMessage: { content: "", createdAt: new Date().toISOString() },
             messages: [],
-            unreadCount: 0
+            unreadCount: 0,
         }
     }
+
+    const visibleThreads = filteredThreads.length > 0
+        ? filteredThreads
+        : activeThread
+            ? [activeThread]
+            : []
+    const shouldShowConversationLayout = visibleThreads.length > 0
 
     const handleSendReply = async () => {
         if (!userData?.id || !activeThreadId || !replyContent.trim()) return
@@ -155,7 +158,7 @@ export default function MessagesPage() {
                 senderId: userData.id,
                 receiverId: activeThreadId,
                 content: replyContent,
-                subject: activeThread?.lastMessage.subject || "Válasz"
+                subject: activeThread?.lastMessage.subject || "Válasz",
             })
             setReplyContent("")
             await loadMessages(true)
@@ -167,185 +170,176 @@ export default function MessagesPage() {
         }
     }
 
-    const handleSelectThread = async (threadId: string) => {
-        setActiveThreadId(threadId)
-    }
-
-    const handleMessageAdmin = () => {
-        if (!admin) {
-            alert("Sajnáljuk, az adminisztrátor jelenleg nem elérhető.")
-            return
-        }
-        setActiveThreadId(admin.id)
-    }
-
     if (!userData) {
         return (
-            <MainLayout showRightSidebar={false}>
-                <div className="container mx-auto p-6 flex items-center justify-center min-h-[60vh]">
-                    <Card className="max-w-md w-full text-center p-8 space-y-4">
-                        <div className="bg-primary/10 rounded-full h-16 w-16 flex items-center justify-center mx-auto text-primary">
-                            <ShieldCheck className="h-8 w-8" />
-                        </div>
-                        <h2 className="text-2xl font-bold">Bejelentkezés szükséges</h2>
-                        <p className="text-muted-foreground">Az üzeneteid megtekintéséhez kérlek jelentkezz be.</p>
-                        <Button className="w-full bg-primary hover:bg-primary">Bejelentkezés</Button>
-                    </Card>
-                </div>
+            <MainLayout showRightSidebar={false} fullWidth>
+                <AccountPageShell
+                    icon={MessageSquare}
+                    title="Üzenetek"
+                    description="Itt látod a kapott és küldött üzeneteidet."
+                >
+                    <AccountEmptyState
+                        icon={ShieldCheck}
+                        title="Bejelentkezés szükséges"
+                        description="Az üzeneteid megtekintéséhez kérlek jelentkezz be."
+                    />
+                </AccountPageShell>
             </MainLayout>
         )
     }
 
     return (
-        <MainLayout showRightSidebar={false}>
-            <div className="max-w-7xl mx-auto px-4 py-8 h-[calc(100vh-100px)]">
-                <div className="flex flex-col md:flex-row gap-6 h-full">
-                    {/* Sidebar: Thread List */}
-                    <div className="w-full md:w-[350px] flex flex-col gap-4 h-full">
-                        <div className="flex items-center justify-between">
-                            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Üzenetek</h1>
-                            {admin && userData.id !== admin.id && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-xs font-bold gap-1.5 text-primary bg-primary/10 hover:bg-primary/20 rounded-full px-3"
-                                    onClick={handleMessageAdmin}
-                                >
-                                    <ShieldCheck className="h-3.5 w-3.5" />
-                                    Admin értesítése
-                                </Button>
-                            )}
-                        </div>
-
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input
-                                placeholder="Keresés az üzenetek között..."
-                                className="pl-10 h-11 bg-white border-gray-100 rounded-xl"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-
-                        <Card className="flex-1 overflow-hidden border-gray-100 shadow-sm rounded-2xl flex flex-col">
-                            <CardContent className="p-0 flex-1 overflow-y-auto">
-                                {loading ? (
-                                    <div className="flex flex-col items-center justify-center py-20 gap-3">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                                        <p className="text-sm text-gray-400">Betöltés...</p>
-                                    </div>
-                                ) : filteredThreads.length > 0 ? (
-                                    <div className="divide-y divide-gray-50">
-                                        {filteredThreads.map(thread => (
-                                            <button
-                                                key={thread.id}
-                                                onClick={() => handleSelectThread(thread.id)}
-                                                className={cn(
-                                                    "w-full flex items-center gap-3 p-4 text-left transition-colors hover:bg-gray-50 group",
-                                                    activeThreadId === thread.id ? "bg-primary-subtle" : ""
-                                                )}
-                                            >
-                                                <div className="relative">
-                                                    <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
-                                                        <AvatarImage src={thread.otherUser.image || ""} />
-                                                        <AvatarFallback className="bg-gray-100 text-gray-600 text-xs font-bold">
-                                                            {thread.otherUser.name?.[0] || <User className="h-4 w-4" />}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    {thread.unreadCount > 0 && (
-                                                        <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                                                            {thread.unreadCount}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center justify-between mb-0.5">
-                                                        <p className={cn(
-                                                            "text-sm font-bold truncate",
-                                                            thread.unreadCount > 0 ? "text-gray-900" : "text-gray-700"
-                                                        )}>
-                                                            {thread.otherUser.name || "Ismeretlen"}
-                                                        </p>
-                                                        <span className="text-[10px] text-gray-400 font-medium">
-                                                            {thread.lastMessage.createdAt ? format(new Date(thread.lastMessage.createdAt), "HH:mm", { locale: hu }) : ""}
-                                                        </span>
-                                                    </div>
-                                                    <p className={cn(
-                                                        "text-xs truncate",
-                                                        thread.unreadCount > 0 ? "text-gray-900 font-semibold" : "text-gray-400"
-                                                    )}>
-                                                        {thread.lastMessage.content}
-                                                    </p>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                                        <div className="bg-gray-50 rounded-full h-16 w-16 flex items-center justify-center mb-4">
-                                            <Mail className="h-8 w-8 text-gray-200" />
-                                        </div>
-                                        <h3 className="font-bold text-gray-900">Nincsenek üzenetek</h3>
-                                        <p className="text-xs text-gray-400 mt-1 max-w-[200px] mx-auto leading-relaxed">
-                                            Itt jelennek meg a kapott és küldött üzeneteid.
-                                        </p>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+            <MainLayout showRightSidebar={false} fullWidth>
+            <AccountPageShell
+                icon={MessageSquare}
+                title="Üzenetek"
+                description="Itt látod a kapott és küldött beszélgetéseidet."
+                actions={
+                    admin && userData.id !== admin.id ? (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-bold text-primary hover:bg-primary/20"
+                            onClick={() => setActiveThreadId(admin.id)}
+                        >
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                            Admin értesítése
+                        </Button>
+                    ) : null
+                }
+            >
+                <div className="space-y-4">
+                    <div className="relative max-w-md">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                            placeholder="Keresés az üzenetek között..."
+                            className="h-11 rounded-xl border-gray-100 bg-white pl-10"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
                     </div>
 
-                    {/* Main Content: Message Thread */}
-                    <div className="flex-1 flex flex-col h-full">
-                        {activeThread ? (
-                            <Card className="flex-1 overflow-hidden border-gray-100 shadow-sm rounded-2xl flex flex-col bg-white">
-                                <CardHeader className="p-4 border-b border-gray-50 bg-white sticky top-0 z-10">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-10 w-10 border border-gray-100">
-                                                <AvatarImage src={activeThread.otherUser.image || ""} />
-                                                <AvatarFallback className="bg-gray-100 text-gray-500 text-xs font-bold">
-                                                    {activeThread.otherUser.name?.[0] || "?"}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <h3 className="text-sm font-bold text-gray-900">{activeThread.otherUser.name}</h3>
-                                                <p className="text-[10px] text-gray-400 font-medium flex items-center gap-1">
-                                                    <span className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse" />
-                                                    Elérhető
-                                                </p>
-                                            </div>
+                    {loading ? (
+                        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+                            <div className="h-[480px] animate-pulse rounded-[32px] bg-gray-100" />
+                            <div className="h-[480px] animate-pulse rounded-[32px] bg-gray-100" />
+                        </div>
+                    ) : !shouldShowConversationLayout ? (
+                        <Card className="rounded-[32px] border border-dashed border-gray-200 bg-white shadow-sm">
+                            <CardContent className="px-6 py-16 sm:px-10">
+                                <div className="flex flex-col items-center justify-center text-center">
+                                    <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-gray-50">
+                                        <Mail className="h-10 w-10 text-gray-300" />
+                                    </div>
+                                    <h2 className="text-xl font-black text-gray-900">Nincsenek üzenetek</h2>
+                                    <p className="mt-2 max-w-md text-sm text-gray-500">
+                                        Itt jelennek meg a kapott és küldött beszélgetéseid. Ha valaki ír neked, vagy te indítasz egy beszélgetést, itt fogod látni.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+                            <div className="flex min-h-[520px] flex-col">
+                                <Card className="flex flex-1 flex-col overflow-hidden rounded-[32px] border-gray-100 shadow-sm">
+                                    <CardContent className="flex-1 overflow-y-auto p-0">
+                                        <div className="divide-y divide-gray-50">
+                                            {visibleThreads.map((thread) => (
+                                                <button
+                                                    key={thread.id}
+                                                    onClick={() => setActiveThreadId(thread.id)}
+                                                    className={cn(
+                                                        "group flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-gray-50",
+                                                        activeThreadId === thread.id ? "bg-primary-subtle" : ""
+                                                    )}
+                                                >
+                                                    <div className="relative">
+                                                        <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
+                                                            <AvatarImage src={thread.otherUser.image || ""} />
+                                                            <AvatarFallback className="bg-gray-100 text-xs font-bold text-gray-600">
+                                                                {thread.otherUser.name?.[0] || <User className="h-4 w-4" />}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        {thread.unreadCount > 0 && (
+                                                            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-primary text-[10px] font-bold text-white shadow-sm">
+                                                                {thread.unreadCount}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="mb-0.5 flex items-center justify-between">
+                                                            <p className={cn(
+                                                                "truncate text-sm font-bold",
+                                                                thread.unreadCount > 0 ? "text-gray-900" : "text-gray-700"
+                                                            )}>
+                                                                {thread.otherUser.name || "Ismeretlen"}
+                                                            </p>
+                                                            <span className="text-[10px] font-medium text-gray-400">
+                                                                {thread.lastMessage.createdAt ? format(new Date(thread.lastMessage.createdAt), "HH:mm", { locale: hu }) : ""}
+                                                            </span>
+                                                        </div>
+                                                        <p className={cn(
+                                                            "truncate text-xs",
+                                                            thread.unreadCount > 0 ? "font-semibold text-gray-900" : "text-gray-400"
+                                                        )}>
+                                                            {thread.lastMessage.content}
+                                                        </p>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <div className="flex min-h-[520px] flex-col">
+                                {activeThread ? (
+                            <Card className="flex flex-1 flex-col overflow-hidden rounded-[32px] border-gray-100 bg-white shadow-sm">
+                                <CardHeader className="sticky top-0 z-10 border-b border-gray-50 bg-white p-4">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="h-10 w-10 border border-gray-100">
+                                            <AvatarImage src={activeThread.otherUser.image || ""} />
+                                            <AvatarFallback className="bg-gray-100 text-xs font-bold text-gray-500">
+                                                {activeThread.otherUser.name?.[0] || "?"}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-gray-900">{activeThread.otherUser.name}</h3>
+                                            <p className="flex items-center gap-1 text-[10px] font-medium text-gray-400">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                                                Elérhető
+                                            </p>
                                         </div>
                                     </div>
                                 </CardHeader>
 
-                                <CardContent className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/30">
-                                    {activeThread.messages.map((msg, index) => {
+                                <CardContent className="flex-1 space-y-6 overflow-y-auto bg-gray-50/30 p-6">
+                                    {activeThread.messages.map((msg) => {
                                         const isMine = msg.senderId === userData.id
                                         return (
                                             <div
                                                 key={msg.id}
                                                 className={cn(
-                                                    "flex flex-col max-w-[80%]",
+                                                    "flex max-w-[80%] flex-col",
                                                     isMine ? "ml-auto items-end" : "mr-auto items-start"
                                                 )}
                                             >
                                                 <div
                                                     className={cn(
-                                                        "p-4 rounded-2xl text-sm shadow-sm",
+                                                        "rounded-2xl p-4 text-sm shadow-sm",
                                                         isMine
-                                                            ? "bg-primary text-white rounded-br-none"
-                                                            : "bg-white text-gray-700 border border-gray-100 rounded-bl-none"
+                                                            ? "rounded-br-none bg-primary text-white"
+                                                            : "rounded-bl-none border border-gray-100 bg-white text-gray-700"
                                                     )}
                                                 >
                                                     {msg.salon && (
-                                                        <span className="inline-block text-[9px] font-bold uppercase tracking-wider text-primary bg-accent px-1.5 py-0.5 rounded mb-2 mr-2 border border-primary/10/50">
+                                                        <span className="mb-2 mr-2 inline-block rounded border border-primary/10 bg-accent px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
                                                             {msg.salon.name}
                                                         </span>
                                                     )}
                                                     {msg.subject && (
                                                         <p className={cn(
-                                                            "text-[10px] font-black uppercase tracking-widest mb-2 pb-1.5 border-b opacity-60 inline-block",
+                                                            "mb-2 inline-block border-b pb-1.5 text-[10px] font-black uppercase tracking-widest opacity-60",
                                                             isMine ? "border-white/20" : "border-gray-100"
                                                         )}>
                                                             {msg.subject}
@@ -353,7 +347,7 @@ export default function MessagesPage() {
                                                     )}
                                                     <p className="leading-relaxed">{msg.content}</p>
                                                 </div>
-                                                <span className="text-[10px] text-gray-400 font-medium mt-1.5 px-1">
+                                                <span className="mt-1.5 px-1 text-[10px] font-medium text-gray-400">
                                                     {format(new Date(msg.createdAt), "HH:mm | MMM d.", { locale: hu })}
                                                 </span>
                                             </div>
@@ -362,15 +356,15 @@ export default function MessagesPage() {
                                     <div ref={messagesEndRef} />
                                 </CardContent>
 
-                                <div className="p-4 border-t border-gray-50 bg-white">
+                                <div className="border-t border-gray-50 bg-white p-4">
                                     <div className="flex items-center gap-2">
                                         <Textarea
                                             placeholder="Válasz írása..."
-                                            className="min-h-[44px] h-[44px] flex-1 resize-none bg-gray-50/50 border-transparent focus:border-primary/10 focus:bg-white rounded-xl transition-all py-3 px-4 text-sm"
+                                            className="h-[44px] min-h-[44px] flex-1 resize-none rounded-xl border-transparent bg-gray-50/50 px-4 py-3 text-sm transition-all focus:border-primary/10 focus:bg-white"
                                             value={replyContent}
                                             onChange={(e) => setReplyContent(e.target.value)}
                                             onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                if (e.key === "Enter" && !e.shiftKey) {
                                                     e.preventDefault()
                                                     handleSendReply()
                                                 }
@@ -378,7 +372,7 @@ export default function MessagesPage() {
                                         />
                                         <Button
                                             size="icon"
-                                            className="h-11 w-11 rounded-xl bg-primary hover:bg-primary shadow-md shadow-primary/10 transition-all active:scale-90 shrink-0"
+                                            className="h-11 w-11 shrink-0 rounded-xl bg-primary shadow-md shadow-primary/10 transition-all active:scale-90 hover:bg-primary"
                                             disabled={!replyContent.trim() || sending}
                                             onClick={handleSendReply}
                                         >
@@ -387,20 +381,22 @@ export default function MessagesPage() {
                                     </div>
                                 </div>
                             </Card>
-                        ) : (
-                            <Card className="flex-1 flex flex-col items-center justify-center border-gray-100 shadow-sm rounded-2xl bg-white/50 border-dashed">
-                                <div className="bg-white rounded-full h-20 w-20 flex items-center justify-center shadow-sm mb-4 border border-gray-50">
-                                    <Inbox className="h-10 w-10 text-gray-200" />
-                                </div>
-                                <h2 className="text-xl font-black text-gray-800 tracking-tight">Válassz ki egy üzenetet</h2>
-                                <p className="text-gray-400 text-sm mt-1 max-w-xs text-center leading-relaxed font-medium">
-                                    Kattints a bal oldali listából egy beszélgetésre az előzmények megtekintéséhez.
-                                </p>
-                            </Card>
-                        )}
-                    </div>
+                                ) : (
+                                    <Card className="flex flex-1 flex-col items-center justify-center rounded-[32px] border border-dashed border-gray-200 bg-white shadow-sm">
+                                        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gray-50">
+                                            <Inbox className="h-10 w-10 text-gray-200" />
+                                        </div>
+                                        <h2 className="text-xl font-black tracking-tight text-gray-800">Válassz ki egy üzenetet</h2>
+                                        <p className="mt-1 max-w-xs text-center text-sm font-medium leading-relaxed text-gray-400">
+                                            Kattints a bal oldali listából egy beszélgetésre az előzmények megtekintéséhez.
+                                        </p>
+                                    </Card>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </div>
+            </AccountPageShell>
         </MainLayout>
     )
 }

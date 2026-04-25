@@ -7,17 +7,21 @@ import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { ProfileSidebar } from "@/components/profile/profile-sidebar"
 import { FeedCard } from "@/components/home/feed-card"
 import { Card, CardContent } from "@/components/ui/card"
-import { getPublicSalonData } from "@/lib/actions/salon"
-import { Star, X, Maximize2, Plus, ImagePlus } from "lucide-react"
+import { getPublicSalonData, trackPublicSalonView } from "@/lib/actions/salon"
+import { Star, X, Maximize2, Plus, ImagePlus, MapPin, MessageCircle, Eye } from "lucide-react"
 import { MessageModal } from "@/components/salon/message-modal"
 import { useAuth } from "@/lib/auth-context"
 import { PostModal } from "@/components/salon/modals/PostModal"
 import { createPost, updatePost, deletePost, toggleLike, createReview } from "@/lib/actions/salon"
 import { ReviewModal } from "@/components/profile/ReviewModal"
+import { AppointmentRequestModal } from "@/components/profile/AppointmentRequestModal"
 import { useSalonProfile } from "@/lib/salon-profile-context"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { normalizeImageList, normalizeImageSrc } from "@/lib/image-utils"
+import { PageErrorBoundary } from "@/components/ui/page-error-boundary"
+import { FavoriteButton } from "@/components/salon/FavoriteButton"
 
 export default function ProfilePage({ params }: { params: Promise<{ slug: string }> }) {
     const { userData } = useAuth()
@@ -26,6 +30,7 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
     const [salon, setSalon] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false)
+    const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false)
     const [lightboxImage, setLightboxImage] = useState<string | null>(null)
 
     const salonProfileCtx = useSalonProfile()
@@ -51,7 +56,7 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                 await updatePost(editingPost.id, { content, images: imageUrls, layout })
                 setSalon({
                     ...salon,
-                    posts: salon.posts.map((p: any) => p.id === editingPost.id ? { ...p, content, images: imageUrls, layout } : p)
+                    posts: (Array.isArray(salon.posts) ? salon.posts : []).map((p: any) => p.id === editingPost.id ? { ...p, content, images: imageUrls, layout } : p)
                 })
                 toast.success("Bejegyzés frissítve!")
             } else {
@@ -63,7 +68,7 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                 })
                 setSalon({
                     ...salon,
-                    posts: [newPost, ...salon.posts]
+                    posts: [newPost, ...(Array.isArray(salon.posts) ? salon.posts : [])]
                 })
                 toast.success("Bejegyzés létrehozva!")
             }
@@ -97,12 +102,49 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
         loadSalonData()
     }, [slug])
 
+    useEffect(() => {
+        if (!salon?.id) return
+
+        const todayKey = new Date().toISOString().slice(0, 10)
+        const storageKey = `salon-view:${salon.id}:${todayKey}`
+
+        if (typeof window === "undefined" || window.sessionStorage.getItem(storageKey)) {
+            return
+        }
+
+        window.sessionStorage.setItem(storageKey, "pending")
+
+        trackPublicSalonView(salon.id)
+            .then((result) => {
+                if (!result?.tracked) {
+                    window.sessionStorage.setItem(storageKey, "skipped")
+                    return
+                }
+
+                window.sessionStorage.setItem(storageKey, "tracked")
+                setSalon((current: any) =>
+                    current
+                        ? {
+                            ...current,
+                            profileViewCount: result.totalViews,
+                        }
+                        : current
+                )
+            })
+            .catch((error) => {
+                console.error("Error tracking salon view:", error)
+                window.sessionStorage.removeItem(storageKey)
+            })
+    }, [salon?.id])
+
     const loadSalonData = async () => {
         try {
+            setLoading(true)
             const data = await getPublicSalonData(slug)
-            setSalon(data)
+            setSalon(data || null)
         } catch (error) {
             console.error("Error loading salon data:", error)
+            setSalon(null)
         } finally {
             setLoading(false)
         }
@@ -111,13 +153,19 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
     // Sync salon data into the global SalonProfileContext (powers the left sidebar)
     useEffect(() => {
         if (salon && salonProfileCtx) {
+            const reviews = Array.isArray(salon.reviews) ? salon.reviews : []
+            const derivedReviewCount = reviews.length
+            const derivedRating = derivedReviewCount > 0
+                ? reviews.reduce((sum: number, review: any) => sum + (Number(review?.rating) || 0), 0) / derivedReviewCount
+                : 0
+
             salonProfileCtx.setSalonProfile({
                 id: salon.id,
                 name: salon.name,
-                avatar: salon.profileImage || salon.images?.[0] || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80",
+                avatar: normalizeImageSrc(salon.profileImage) || normalizeImageList(salon.images)[0] || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80",
                 categories: salon.categories || [],
-                rating: salon.rating || 0,
-                reviewCount: salon.reviewCount || 0,
+                rating: derivedRating || Number(salon.rating) || 0,
+                reviewCount: derivedReviewCount || Number(salon.reviewCount) || 0,
                 city: salon.city,
                 district: salon.district,
                 ownerId: salon.ownerId,
@@ -132,7 +180,7 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
         }
     }, [])
 
-    if (loading || (!salon && slug !== "me")) {
+    if (loading) {
         return (
             <MainLayout showRightSidebar={false} fullWidth>
                 <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -143,15 +191,44 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
         )
     }
 
-    const coverImage = salon.coverImage || salon.images?.[0] || "https://images.unsplash.com/photo-1521590832896-7bbc16635175?w=1200&q=80"
-    const avatar = salon.profileImage || salon.images?.[0] || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80"
+    if (!salon) {
+        return (
+            <MainLayout showRightSidebar={false} fullWidth>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
+                    <h1 className="text-2xl font-bold text-gray-900">A profil nem található</h1>
+                    <p className="max-w-md text-sm text-gray-500">
+                        Ez a szalonprofil hiányzik, vagy nem tartalmaz elég adatot a biztonságos megjelenítéshez.
+                    </p>
+                </div>
+            </MainLayout>
+        )
+    }
+
+    const salonPosts = Array.isArray(salon.posts) ? salon.posts : []
+    const salonServices = Array.isArray(salon.services) ? salon.services : []
+    const salonReviews = Array.isArray(salon.reviews) ? salon.reviews : []
+    const salonTeamMembers = Array.isArray(salon.teamMembers) ? salon.teamMembers : []
+    const derivedReviewCount = salonReviews.length
+    const derivedRating = derivedReviewCount > 0
+        ? salonReviews.reduce((sum: number, review: any) => sum + (Number(review?.rating) || 0), 0) / derivedReviewCount
+        : 0
+    const salonRating = derivedRating || Number(salon.rating) || 0
+    const salonReviewCount = derivedReviewCount || Number(salon.reviewCount) || 0
+    const normalizedSalonImages = normalizeImageList(salon.images)
+    const coverImage = normalizeImageSrc(salon.coverImage) || normalizedSalonImages[0] || "https://images.unsplash.com/photo-1521590832896-7bbc16635175?w=1200&q=80"
+    const avatar = normalizeImageSrc(salon.profileImage) || normalizedSalonImages[0] || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80"
     const isOwner = userData?.id === salon?.ownerId
+    const profileViewCount = Number(salon.profileViewCount) || 0
 
     return (
         <MainLayout showRightSidebar={false} fullWidth>
-            <div className="pb-20 pr-6">
+            <PageErrorBoundary
+                title="A profiloldal nem tudott teljesen betöltődni"
+                description="A szalon egy része hibás vagy hiányos adatot tartalmaz. A többi tartalom biztonságosan megjelenik."
+            >
+            <div className="pb-20 md:pr-6">
                 {/* ── Cover Image ── */}
-                <div className="relative h-56 md:h-72 w-full overflow-hidden rounded-2xl shadow-sm mt-2">
+                <div className="relative -mx-4 mt-2 h-[17rem] w-[calc(100%+2rem)] overflow-hidden shadow-sm sm:mx-0 sm:w-full sm:rounded-2xl md:h-[21.5rem]">
                     <Image
                         src={coverImage}
                         alt={`${salon.name} cover`}
@@ -162,12 +239,81 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                 </div>
 
+                <div className="mt-4 lg:hidden">
+                    <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-white bg-white shadow-sm">
+                                <Image src={avatar} alt={salon.name} fill className="object-cover" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <h2 className="truncate text-base font-bold text-foreground">{salon.name}</h2>
+                                <div className="mt-1 flex items-center gap-1.5 text-sm">
+                                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                    <span className="font-semibold">{salonRating.toFixed(1)}</span>
+                                    <span className="text-muted-foreground">({salonReviewCount})</span>
+                                </div>
+                                <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <Eye className="h-3.5 w-3.5" />
+                                    <span>{profileViewCount} profilmegtekintés</span>
+                                </div>
+                                <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                    <MapPin className="h-3.5 w-3.5" />
+                                    <span className="truncate">
+                                        {salon.city}
+                                        {salon.district ? `, ${salon.district}` : ""}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {Array.isArray(salon.categories) && salon.categories.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                                {salon.categories.map((category: string, index: number) => (
+                                    <span
+                                        key={`${category}-${index}`}
+                                        className="rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white"
+                                    >
+                                        {category}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        {!isOwner && (
+                            <div className="mt-4 space-y-2">
+                                <Button
+                                    className="w-full rounded-xl font-bold bg-gray-200 text-gray-400 cursor-not-allowed"
+                                    disabled
+                                    title="Hamarosan elérhető!"
+                                >
+                                    Időpontfoglalás
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="w-full rounded-xl gap-2 font-semibold"
+                                    onClick={() => {
+                                        window.dispatchEvent(new CustomEvent("open-message-modal"))
+                                    }}
+                                >
+                                    <MessageCircle className="h-4 w-4" />
+                                    Üzenet küldése
+                                </Button>
+                                <div className="flex justify-center pt-1">
+                                    <FavoriteButton
+                                        salonId={salon.id}
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-10 w-10 rounded-xl"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 {/* ── Tabs ── */}
-                <div className="mt-4">
+                <div className="sticky top-[64px] z-30 mt-4 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
                     <ProfileTabs activeTab={activeTab} onChange={setActiveTab} isTeam={salon.isTeam} />
                 </div>
 
-                {/* ── Content grid: main content + info sidebar ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 py-6">
 
                     {/* Main Content */}
@@ -199,8 +345,8 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                                     </Card>
                                 )}
 
-                                {salon.posts?.length > 0 ? (
-                                    salon.posts.map((post: any) => (
+                                {salonPosts.length > 0 ? (
+                                    salonPosts.map((post: any) => (
                                         <FeedCard
                                             key={post.id}
                                             isOwner={isOwner}
@@ -214,7 +360,7 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                                                     role: salon.categories?.[0] || "Beauty Salon",
                                                     slug: salon.slug
                                                 },
-                                                images: post.images,
+                                                images: normalizeImageList(post.images),
                                                 layout: post.layout,
                                                 content: post.content,
                                                 likes: post._count?.likes || 0,
@@ -233,25 +379,27 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
 
                         {activeTab === "services" && (
                             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-100">
-                                {salon.services?.map((service: any, index: number) => (
-                                    <div key={index} className="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                                        <div>
+                                {salonServices.length > 0 ? salonServices.map((service: any, index: number) => (
+                                    <div key={index} className="flex flex-col gap-3 p-5 transition-colors hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                                        <div className="min-w-0">
                                             <h4 className="font-semibold text-gray-900">{service.name}</h4>
                                             <p className="text-sm text-gray-500 mt-1">{service.duration}</p>
                                         </div>
-                                        <div className="font-bold text-primary bg-accent px-3 py-1 rounded-full">
+                                        <div className="w-fit shrink-0 rounded-full bg-accent px-3 py-1 font-bold text-primary">
                                             {service.price} {salon.currency}
                                         </div>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div className="p-6 text-center text-gray-400 italic">Még nincsenek szolgáltatások megadva.</div>
+                                )}
                             </div>
                         )}
 
                         {activeTab === "gallery" && (
                             <div>
-                                {salon.images?.length > 0 ? (
+                                {normalizedSalonImages.length > 0 ? (
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                        {salon.images.map((img: string, index: number) => (
+                                        {normalizedSalonImages.map((img: string, index: number) => (
                                             <div
                                                 key={index}
                                                 className="aspect-square relative group cursor-pointer overflow-hidden rounded-xl bg-gray-100"
@@ -283,7 +431,7 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                                     <div className="flex flex-col md:flex-row items-center gap-10">
                                         <div className="text-center md:border-r border-gray-100 md:pr-10">
                                             <div className="text-6xl font-black text-gray-900 mb-2">
-                                                {salon.rating?.toFixed(1) || "0.0"}
+                                                {salonRating.toFixed(1)}
                                             </div>
                                             <div className="flex items-center justify-center gap-1 mb-2">
                                                 {[1, 2, 3, 4, 5].map((s) => (
@@ -291,7 +439,7 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                                                         key={s}
                                                         className={cn(
                                                             "h-5 w-5",
-                                                            (salon.rating || 0) >= s ? "fill-yellow-400 text-yellow-400" : "text-gray-200"
+                                                            salonRating >= s ? "fill-yellow-400 text-yellow-400" : "text-gray-200"
                                                         )}
                                                     />
                                                 ))}
@@ -303,8 +451,8 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
 
                                         <div className="flex-1 w-full space-y-2">
                                             {[5, 4, 3, 2, 1].map((rating) => {
-                                                const count = salon.reviews?.filter((r: any) => r.rating === rating).length || 0;
-                                                const percentage = salon.reviewCount > 0 ? (count / salon.reviewCount) * 100 : 0;
+                                                const count = salonReviews.filter((r: any) => r?.rating === rating).length || 0;
+                                                const percentage = salonReviewCount > 0 ? (count / salonReviewCount) * 100 : 0;
                                                 return (
                                                     <div key={rating} className="flex items-center gap-4">
                                                         <div className="flex items-center gap-1.5 w-8">
@@ -338,12 +486,12 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
 
                                 {/* Review List */}
                                 <div className="space-y-6">
-                                    {salon.reviews?.length > 0 ? (
-                                        salon.reviews.map((review: any) => (
+                                    {salonReviews.length > 0 ? (
+                                        salonReviews.map((review: any) => (
                                             <div key={review.id} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-50 flex gap-5 items-start group hover:border-primary/10 transition-colors">
                                                 <div className="relative h-12 w-12 rounded-2xl overflow-hidden shrink-0 border border-gray-100">
                                                     <img
-                                                        src={review.user?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(review.user?.name || "Guest")}&background=random`}
+                                                        src={normalizeImageSrc(review.user?.image) || `https://ui-avatars.com/api/?name=${encodeURIComponent(review.user?.name || "Guest")}&background=random`}
                                                         alt={review.user?.name}
                                                         className="w-full h-full object-cover"
                                                     />
@@ -402,7 +550,7 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                                     <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-8 items-start">
                                         <div className="w-32 h-32 rounded-3xl overflow-hidden border-4 border-primary/5 flex-shrink-0 shadow-lg shadow-primary/10/50">
                                             <img
-                                                src={salon.ownerImage || avatar}
+                                                src={normalizeImageSrc(salon.ownerImage) || avatar}
                                                 alt={salon.ownerName || salon.name}
                                                 className="w-full h-full object-cover"
                                             />
@@ -421,11 +569,11 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                                     <div className="grid gap-6">
                                         <h3 className="text-2xl font-bold text-gray-900 mb-2">Ismerd meg a csapatunkat</h3>
                                         <div className="grid sm:grid-cols-2 gap-6">
-                                            {salon.teamMembers?.map((member: any) => (
+                                            {salonTeamMembers.map((member: any) => (
                                                 <div key={member.id} className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 flex gap-4 items-center group hover:shadow-md transition-shadow">
                                                     <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border-2 border-gray-50 group-hover:border-primary/20 transition-colors">
                                                         <img
-                                                            src={member.image || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80"}
+                                                            src={normalizeImageSrc(member.image) || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80"}
                                                             alt={member.name}
                                                             className="w-full h-full object-cover"
                                                         />
@@ -440,7 +588,7 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                                                 </div>
                                             ))}
                                         </div>
-                                        {(!salon.teamMembers || salon.teamMembers.length === 0) && (
+                                        {salonTeamMembers.length === 0 && (
                                             <div className="text-center py-12 text-gray-400 italic bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                                                 A csapat tagjai még nincsenek feltöltve.
                                             </div>
@@ -489,6 +637,16 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                 salonId={salon?.id}
             />
 
+            {salon && (
+                <AppointmentRequestModal
+                    isOpen={isAppointmentModalOpen}
+                    onClose={() => setIsAppointmentModalOpen(false)}
+                    salonId={salon.id}
+                    salonName={salon.name}
+                    services={salon.services || []}
+                />
+            )}
+
             <PostModal
                 isOpen={isPostModalOpen}
                 onClose={() => {
@@ -511,6 +669,7 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                     onSuccess={loadSalonData}
                 />
             )}
+            </PageErrorBoundary>
         </MainLayout>
     )
 }

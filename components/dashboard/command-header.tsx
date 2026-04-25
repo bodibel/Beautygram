@@ -1,31 +1,61 @@
 "use client"
 
-import { Bell } from "lucide-react"
-import Image from "next/image"
+import { Bell, CalendarDays, MessageSquareMore } from "lucide-react"
 
-export function CommandHeader({ salonName }: { salonName: string }) {
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+type CommandHeaderProps = {
+    salonName: string
+    pendingRequests: number
+    unreadMessages: number
+}
+
+export function CommandHeader({ salonName, pendingRequests, unreadMessages }: CommandHeaderProps) {
+    const today = new Date().toLocaleDateString("hu-HU", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    })
 
     return (
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">Good Morning, {salonName}</h1>
-                <p className="text-gray-500">Here's your studio's activity for {today}.</p>
+        <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0">
+                <h1 className="break-words text-2xl font-bold text-gray-900 sm:text-3xl">
+                    Áttekintés, {salonName}
+                </h1>
+                <p className="mt-1 text-gray-500">Mai nap: {today}. Itt látod a szalonod aktuális állapotát.</p>
             </div>
 
-            <div className="flex items-center gap-4">
-                <div className="relative">
-                    <input
-                        type="text"
-                        placeholder="Search appointments..."
-                        className="rounded-full bg-white border-0 py-2.5 px-4 pr-10 text-sm ring-1 ring-gray-200 focus:ring-2 focus:ring-primary w-64"
-                    />
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+            <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 rounded-full border border-gray-100 bg-white px-4 py-2 shadow-sm">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <MessageSquareMore className="h-4 w-4" />
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Üzenetek</p>
+                        <p className="text-sm font-bold text-gray-900">
+                            {unreadMessages > 0 ? `${unreadMessages} új üzenet` : "Nincs új üzenet"}
+                        </p>
+                    </div>
                 </div>
-                <button className="relative p-2.5 bg-white rounded-full ring-1 ring-gray-200 hover:bg-gray-50">
+
+                <div className="flex items-center gap-2 rounded-full border border-gray-100 bg-white px-4 py-2 shadow-sm">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                        <CalendarDays className="h-4 w-4" />
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Időpontkérések</p>
+                        <p className="text-sm font-bold text-gray-900">
+                            {pendingRequests > 0 ? `${pendingRequests} függő kérés` : "Nincs függő kérés"}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="relative flex h-12 w-12 items-center justify-center rounded-full border border-gray-100 bg-white shadow-sm">
                     <Bell className="h-5 w-5 text-gray-600" />
-                    <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
-                </button>
+                    {(unreadMessages > 0 || pendingRequests > 0) && (
+                        <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+                    )}
+                </div>
             </div>
         </div>
     )

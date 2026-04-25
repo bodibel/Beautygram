@@ -1,67 +1,100 @@
 "use client"
 
-import { Calendar, DollarSign, Eye, TrendingUp } from "lucide-react"
+import { Briefcase, Calendar, Eye } from "lucide-react"
 
-export function KpiCards() {
+type KpiCardsProps = {
+    bookingsToday: number
+    pendingRequests: number
+    servicesCount: number
+    postsCount: number
+    totalViews: number
+    todayViews: number
+}
+
+function MiniMeter({ value, max }: { value: number; max: number }) {
+    const safeMax = Math.max(max, 1)
+    const percent = Math.min(100, Math.round((value / safeMax) * 100))
+
+    return (
+        <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                <span>Arány</span>
+                <span>{percent}%</span>
+            </div>
+            <div className="h-2 rounded-full bg-gray-100">
+                <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${percent}%` }} />
+            </div>
+        </div>
+    )
+}
+
+export function KpiCards({
+    bookingsToday,
+    pendingRequests,
+    servicesCount,
+    postsCount,
+    totalViews,
+    todayViews,
+}: KpiCardsProps) {
     return (
         <div className="grid gap-6 md:grid-cols-3">
-            {/* Bookings */}
             <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-100/50 transition-all hover:shadow-md">
-                <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Bookings Today</span>
-                    <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                <div className="mb-4 flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Mai foglalások</span>
+                    <div className="rounded-xl bg-primary/10 p-2 text-primary">
                         <Calendar className="h-5 w-5" />
                     </div>
                 </div>
-                <div className="flex items-baseline gap-2">
-                    <h3 className="text-4xl font-bold text-gray-900">12</h3>
-                    <span className="text-sm font-medium text-green-500">+2 from yesterday</span>
-                </div>
-                {/* Mini Chart Mockup */}
-                <div className="mt-4 flex items-end gap-1 h-8">
-                    {[40, 60, 45, 70, 50, 60, 80].map((h, i) => (
-                        <div key={i} style={{ height: `${h}%` }} className={`flex-1 rounded-sm ${i === 6 ? "bg-primary" : "bg-primary/10"}`} />
-                    ))}
-                </div>
-            </div>
-
-            {/* Revenue */}
-            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-100/50 transition-all hover:shadow-md">
-                <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Monthly Revenue</span>
-                    <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                        <DollarSign className="h-5 w-5" />
-                    </div>
-                </div>
-                <div className="flex items-baseline gap-2">
-                    <h3 className="text-4xl font-bold text-gray-900">$8,450</h3>
-                    <span className="text-sm font-medium text-green-500 flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" /> +15.4%
+                <div className="flex flex-wrap items-baseline gap-2">
+                    <h3 className="text-3xl font-bold text-gray-900 sm:text-4xl">{bookingsToday}</h3>
+                    <span className="text-sm font-medium text-gray-500">
+                        {bookingsToday > 0 ? "ma érintett kérés" : "ma még nincs kérés"}
                     </span>
                 </div>
-                {/* Sparkline Mockup */}
-                <svg className="w-full h-10 mt-3 text-primary" viewBox="0 0 100 40" preserveAspectRatio="none">
-                    <path d="M0,35 C20,35 20,10 40,25 C60,40 60,5 100,20" stroke="currentColor" strokeWidth="2" fill="none" />
-                </svg>
+                <p className="mt-2 text-sm text-gray-500">
+                    {pendingRequests > 0
+                        ? `${pendingRequests} további függő időpontkérés vár döntésre.`
+                        : "Minden időpontkérésed naprakész állapotban van."}
+                </p>
+                <MiniMeter value={bookingsToday} max={Math.max(bookingsToday + pendingRequests, 3)} />
             </div>
 
-            {/* Reach */}
             <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-100/50 transition-all hover:shadow-md">
-                <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Profile Reach</span>
-                    <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                <div className="mb-4 flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Aktív kínálat</span>
+                    <div className="rounded-xl bg-blue-50 p-2 text-blue-600">
+                        <Briefcase className="h-5 w-5" />
+                    </div>
+                </div>
+                <div className="flex flex-wrap items-baseline gap-2">
+                    <h3 className="text-3xl font-bold text-gray-900 sm:text-4xl">{servicesCount}</h3>
+                    <span className="text-sm font-medium text-gray-500">szolgáltatás</span>
+                </div>
+                <p className="mt-2 text-sm text-gray-500">
+                    {postsCount > 0
+                        ? `${postsCount} aktív bejegyzés támogatja a felfedezhetőséget.`
+                        : "Még nincs aktív bejegyzésed, érdemes feltölteni tartalmat."}
+                </p>
+                <MiniMeter value={postsCount} max={Math.max(servicesCount, postsCount, 3)} />
+            </div>
+
+            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-100/50 transition-all hover:shadow-md">
+                <div className="mb-4 flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Profil látogatók</span>
+                    <div className="rounded-xl bg-sky-50 p-2 text-sky-600">
                         <Eye className="h-5 w-5" />
                     </div>
                 </div>
-                <div className="flex items-baseline gap-2">
-                    <h3 className="text-4xl font-bold text-gray-900">14.2k</h3>
-                    <span className="text-sm font-medium text-green-500">+8% this week</span>
+                <div className="flex flex-wrap items-baseline gap-2">
+                    <h3 className="text-3xl font-bold text-gray-900 sm:text-4xl">{totalViews}</h3>
+                    <span className="text-sm font-medium text-gray-500">összes megtekintés</span>
                 </div>
-                <div className="mt-4 flex items-end gap-1 h-8">
-                    {[30, 40, 35, 50, 45, 60, 65].map((h, i) => (
-                        <div key={i} style={{ height: `${h}%` }} className={`flex-1 rounded-sm ${i === 6 ? "bg-primary" : "bg-gray-100"}`} />
-                    ))}
-                </div>
+                <p className="mt-2 text-sm text-gray-500">
+                    {todayViews > 0
+                        ? `${todayViews} látogatás érkezett ma a publikus profilodra.`
+                        : "Ma még nem érkezett új profilmegtekintés."}
+                </p>
+                <MiniMeter value={todayViews} max={Math.max(totalViews, todayViews, 5)} />
             </div>
         </div>
     )

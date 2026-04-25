@@ -80,8 +80,8 @@ export default function SalonGalleryPage({ params }: { params: Promise<{ id: str
 
     if (loading) {
         return (
-            <MainLayout>
-                <div className="container mx-auto p-6">
+            <MainLayout showRightSidebar={false} fullWidth>
+                <div className="w-full max-w-7xl p-6 lg:mr-auto">
                     <div className="text-muted-foreground">Betöltés...</div>
                 </div>
             </MainLayout>
@@ -94,8 +94,8 @@ export default function SalonGalleryPage({ params }: { params: Promise<{ id: str
     }
 
     return (
-        <MainLayout showRightSidebar={false}>
-            <div className="container mx-auto p-6 md:p-8 max-w-7xl">
+        <MainLayout showRightSidebar={false} fullWidth>
+            <div className="w-full max-w-7xl p-6 md:p-8 lg:mr-auto">
                 <h1 className="text-3xl font-bold mb-6">Galéria</h1>
                 <Card>
                     <CardHeader>

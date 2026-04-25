@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Store, ChevronRight } from "lucide-react"
 import { getSalonName } from "@/lib/actions/salon"
 import { cn } from "@/lib/utils"
+import { normalizeImageSrc } from "@/lib/image-utils"
 
 export function ActiveSalonIndicator() {
     const params = useParams()
@@ -33,14 +34,16 @@ export function ActiveSalonIndicator() {
     // Only show if we are in a salon context and not just viewing the list or a public profile
     if (!salonId || !salonData || pathname?.startsWith("/profile/")) return null
 
+    const normalizedProfileImage = normalizeImageSrc(salonData.profileImage)
+
     return (
         <div className="px-4 sm:px-6 lg:px-8 pt-4">
             <div className="rounded-2xl bg-white/50 backdrop-blur-md border border-primary/10/50 p-3 shadow-sm flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                        {salonData.profileImage ? (
+                        {normalizedProfileImage ? (
                             <img
-                                src={salonData.profileImage}
+                                src={normalizedProfileImage}
                                 alt={salonData.name}
                                 className="h-full w-full object-cover rounded-xl"
                             />

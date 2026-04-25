@@ -38,8 +38,8 @@ export default function SalonSettingsPage({ params }: { params: Promise<{ id: st
 
     if (loading) {
         return (
-            <MainLayout>
-                <div className="container mx-auto p-6">
+            <MainLayout showRightSidebar={false} fullWidth>
+                <div className="w-full max-w-6xl p-6 lg:mr-auto">
                     <div className="text-muted-foreground">Betöltés...</div>
                 </div>
             </MainLayout>
@@ -49,8 +49,8 @@ export default function SalonSettingsPage({ params }: { params: Promise<{ id: st
     if (!salon && !loading) {
         // Use a side effect for navigation
         return (
-            <MainLayout showRightSidebar={false}>
-                <div className="container mx-auto p-6 text-center">
+            <MainLayout showRightSidebar={false} fullWidth>
+                <div className="w-full max-w-4xl p-6 text-center lg:mr-auto">
                     <p className="text-muted-foreground">Szalon nem található vagy nincs jogosultságod.</p>
                 </div>
             </MainLayout>
@@ -60,8 +60,8 @@ export default function SalonSettingsPage({ params }: { params: Promise<{ id: st
     if (!salon) return null
 
     return (
-        <MainLayout showRightSidebar={false}>
-            <div className="container mx-auto p-6 md:p-8 max-w-7xl">
+        <MainLayout showRightSidebar={false} fullWidth>
+            <div className="w-full max-w-7xl p-6 md:p-8 lg:mr-auto">
                 <h1 className="text-3xl font-bold mb-6">Szalon adatok</h1>
                 <div className="max-w-2xl">
                     <BasicInfoCard

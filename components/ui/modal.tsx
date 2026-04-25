@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Dialog, DialogContent, DialogOverlay, DialogPortal, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "./button"
@@ -19,39 +19,48 @@ export function Modal({ isOpen, onClose, children, title, size = "md" }: ModalPr
         sm: "max-w-sm",
         md: "max-w-lg",
         lg: "max-w-2xl",
-        xl: "max-w-4xl"
+        xl: "max-w-4xl",
     }
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogPortal>
-                <DialogOverlay className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm" />
-                <DialogContent 
-                    className={cn(
-                        "fixed left-[50%] top-[50%] z-[101] grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border-none bg-background p-6 shadow-lg duration-200 sm:rounded-2xl",
-                        "max-h-[90vh] overflow-y-auto outline-none",
-                        sizeClasses[size]
+            <DialogContent
+                className={cn(
+                    "border-none bg-background p-0 shadow-lg outline-none",
+                    "max-h-[90vh] overflow-hidden sm:rounded-2xl",
+                    sizeClasses[size]
+                )}
+                hideCloseButton
+                onPointerDownOutside={onClose}
+                onEscapeKeyDown={onClose}
+            >
+                <DialogTitle className="sr-only">{title || "Ablak"}</DialogTitle>
+                <DialogDescription className="sr-only">{title || "Tartalom"}</DialogDescription>
+
+                <div className="flex items-center gap-3 border-b border-black/5 bg-background px-6 py-5">
+                    {title ? (
+                        <h2 className="text-xl font-semibold leading-none tracking-tight text-foreground">
+                            {title}
+                        </h2>
+                    ) : (
+                        <span className="sr-only">Ablak fejléc</span>
                     )}
-                    onPointerDownOutside={onClose}
-                    onEscapeKeyDown={onClose}
-                >
-                    <DialogTitle className="sr-only">{title || "Ablak"}</DialogTitle>
-                    <DialogDescription className="sr-only">{title || "Tartalom"}</DialogDescription>
-                    <div className="flex items-center justify-between mb-4 sticky top-0 bg-white pb-2 z-10">
-                        {title && <h2 className="text-xl font-semibold leading-none tracking-tight">{title}</h2>}
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={onClose} 
-                            className="h-8 w-8 ml-auto rounded-full hover:bg-gray-100"
-                        >
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Bezárás</span>
-                        </Button>
-                    </div>
-                    <div>{children}</div>
-                </DialogContent>
-            </DialogPortal>
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onClose}
+                        className="ml-auto h-9 w-9 rounded-full text-muted-foreground hover:bg-black/5 hover:text-foreground"
+                    >
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Bezárás</span>
+                    </Button>
+                </div>
+
+                <div className="max-h-[calc(90vh-84px)] overflow-y-auto px-6 py-6">
+                    {children}
+                </div>
+            </DialogContent>
         </Dialog>
     )
 }

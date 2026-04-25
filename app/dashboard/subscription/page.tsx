@@ -1,267 +1,350 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
-import { Check, Crown, Zap, Gift, ArrowRight } from "lucide-react"
+import { AccountPageShell } from "@/components/account/account-page-shell"
+import { SubscriptionBadge } from "@/components/dashboard/SubscriptionBadge"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/auth-context"
+import { useRouter } from "next/navigation"
+import { getUserSalons } from "@/lib/actions/salon"
+import {
+    ArrowRight,
+    BarChart3,
+    CalendarClock,
+    Check,
+    Crown,
+    Eye,
+    Sparkles,
+    Store,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const plans = [
-  {
-    id: "FREE",
-    name: "Ingyenes",
-    price: { huf: 0, eur: 0 },
-    icon: Gift,
-    color: "gray",
-    badge: null,
-    features: [
-      "1 szalon regisztrálható",
-      "Kapcsolati adatok megjelenítése",
-      "Havi 5 bejegyzés (csak kép)",
-      "Alap profil oldal",
-      "2 hónapos próbaidőszak",
-    ],
-    limitations: [
-      "Nem jelenik meg keresési kiemelten",
-      "Nincs online időpontfoglalás",
-      "Nincs videó feltöltés",
-    ],
-    cta: "Jelenlegi csomag",
-    ctaDisabled: true,
-  },
-  {
-    id: "STANDARD",
-    name: "Standard",
-    price: { huf: 3990, eur: 9.9 },
-    icon: Zap,
-    color: "blue",
-    badge: "Népszerű",
-    features: [
-      "Korlátlan bejegyzés",
-      "Videó feltöltés",
-      "Online időpontfoglalás",
-      "Teljes profil (bio, nyitvatartás, térkép)",
-      "Vélemények fogadása",
-      "Alap keresési megjelenés",
-      "30 napos számlázási ciklus",
-    ],
-    limitations: [],
-    cta: "Standard előfizetés",
-    ctaDisabled: false,
-  },
-  {
-    id: "PREMIUM",
-    name: "Prémium",
-    price: { huf: 7990, eur: 19.9 },
-    icon: Crown,
-    color: "peach",
-    badge: "Legjobb",
-    features: [
-      "Minden Standard funkció",
-      "Kiemelt megjelenés a keresőben",
-      "Legelöl a bejegyzések feedjében",
-      "Legelöl a szolgáltatók listáján",
-      "\"Ajánlott szakember\" badge",
-      "Profil statisztikák",
-      "Prioritásos ügyfélszolgálat",
-      "30 napos számlázási ciklus",
-    ],
-    limitations: [],
-    cta: "Prémium előfizetés",
-    ctaDisabled: false,
-  },
+type UserSalon = {
+    id: string
+    name: string
+    city: string
+    address: string
+    profileImage?: string | null
+    subscription?: {
+        plan: "FREE" | "STANDARD" | "PREMIUM"
+        status: "ACTIVE" | "INACTIVE" | "PAST_DUE" | "CANCELLED"
+        freeExpiresAt?: string | Date | null
+        currentPeriodEnd?: string | Date | null
+        cancelAtPeriodEnd?: boolean
+    } | null
+}
+
+const premiumBenefits = [
+    {
+        icon: Sparkles,
+        title: "Kiemelt helyi megjelenés",
+        description: "A prémium szalonok elsőbbséget kaphatnak a kiemelt blokkban a saját városukban.",
+    },
+    {
+        icon: Eye,
+        title: "Nagyobb láthatóság",
+        description: "Erősebb profilmegjelenés, több felfedezési pont és jobb észrevehetőség a platformon.",
+    },
+    {
+        icon: BarChart3,
+        title: "Profilstatisztikák",
+        description: "Látogatószámok és aktivitási adatok segítenek követni a szalonod teljesítményét.",
+    },
+    {
+        icon: CalendarClock,
+        title: "Foglalási fókusz",
+        description: "A prémium jelenlét a megkeresések és időpontkérések számát is támogathatja.",
+    },
 ]
 
-const colorMap = {
-  gray: {
-    bg: "bg-gray-50",
-    border: "border-gray-200",
-    icon: "bg-gray-100 text-gray-500",
-    badge: "bg-gray-100 text-gray-600",
-    btn: "bg-gray-200 text-gray-500 cursor-not-allowed",
-    check: "text-gray-400",
-  },
-  blue: {
-    bg: "bg-white",
-    border: "border-blue-200 ring-2 ring-blue-100",
-    icon: "bg-blue-50 text-blue-600",
-    badge: "bg-blue-500 text-white",
-    btn: "bg-blue-600 hover:bg-blue-700 text-white",
-    check: "text-blue-500",
-  },
-  peach: {
-    bg: "bg-white",
-    border: "border-[#C87860]/30 ring-2 ring-[#C87860]/10",
-    icon: "bg-[#C87860]/10 text-[#C87860]",
-    badge: "bg-[#C87860] text-white",
-    btn: "bg-[#C87860] hover:bg-[#b56d55] text-white",
-    check: "text-[#C87860]",
-  },
+const planCards = [
+    {
+        id: "FREE",
+        name: "Ingyenes",
+        subtitle: "Alap jelenlét a platformon",
+        accent: "text-gray-600",
+        border: "border-gray-200",
+        background: "bg-white",
+        features: [
+            "Publikus profiloldal",
+            "Alap szolgáltatáslista",
+            "Kapcsolati adatok megjelenítése",
+        ],
+    },
+    {
+        id: "STANDARD",
+        name: "Standard",
+        subtitle: "Több tartalom és online jelenlét",
+        accent: "text-blue-600",
+        border: "border-blue-200",
+        background: "bg-blue-50/40",
+        features: [
+            "Korlátlanabb tartalomkezelés",
+            "Erősebb profilépítés",
+            "Bővebb funkciók a szalonkezeléshez",
+        ],
+    },
+    {
+        id: "PREMIUM",
+        name: "Prémium",
+        subtitle: "Kiemelt láthatóság és előnyök",
+        accent: "text-primary",
+        border: "border-primary/30",
+        background: "bg-primary/5",
+        features: [
+            "Esély a kiemelt szalonok blokkba kerülésre",
+            "Nagyobb platformos láthatóság",
+            "Profilstatisztikák és prémium megjelenés",
+        ],
+    },
+]
+
+function formatPlanName(plan?: "FREE" | "STANDARD" | "PREMIUM" | null) {
+    if (plan === "STANDARD") return "Standard"
+    if (plan === "PREMIUM") return "Prémium"
+    return "Ingyenes"
 }
 
 export default function SubscriptionPage() {
-  const [currency, setCurrency] = useState<"huf" | "eur">("huf")
-  const [loading, setLoading] = useState<string | null>(null)
+    const { userData } = useAuth()
+    const router = useRouter()
+    const [salons, setSalons] = useState<UserSalon[]>([])
+    const [loading, setLoading] = useState(true)
+    const [selectedSalonId, setSelectedSalonId] = useState<string | null>(null)
 
-  const handleSubscribe = async (planId: string) => {
-    if (planId === "FREE") return
-    setLoading(planId)
-    // TODO: Stripe checkout session létrehozása
-    // const res = await fetch("/api/stripe/create-checkout", {
-    //   method: "POST",
-    //   body: JSON.stringify({ plan: planId, currency }),
-    // })
-    // const { url } = await res.json()
-    // window.location.href = url
-    alert("Stripe integráció hamarosan elérhető!")
-    setLoading(null)
-  }
+    useEffect(() => {
+        const loadSalons = async () => {
+            if (!userData?.id) return
 
-  return (
-    <MainLayout showRightSidebar={false}>
-      <div className="max-w-5xl mx-auto px-4 py-12 space-y-10">
-        {/* Header */}
-        <div className="text-center space-y-3">
-          <h1 className="text-4xl font-black text-gray-900">Válassz csomagot</h1>
-          <p className="text-gray-500 text-lg max-w-xl mx-auto">
-            Növeld szalonod láthatóságát és foglald el a legjobb helyet a GlowySpot platformon.
-          </p>
+            try {
+                const result = await getUserSalons(userData.id)
+                const normalized = (result as UserSalon[]) || []
 
-          {/* Pénznem váltó */}
-          <div className="inline-flex items-center bg-gray-100 rounded-xl p-1 mt-4">
-            <button
-              onClick={() => setCurrency("huf")}
-              className={cn(
-                "px-5 py-2 rounded-lg text-sm font-bold transition-all",
-                currency === "huf"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              )}
-            >
-              🇭🇺 Forint (Ft)
-            </button>
-            <button
-              onClick={() => setCurrency("eur")}
-              className={cn(
-                "px-5 py-2 rounded-lg text-sm font-bold transition-all",
-                currency === "eur"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              )}
-            >
-              🇪🇺 Euro (€)
-            </button>
-          </div>
-        </div>
+                if (normalized.length === 0) {
+                    router.replace("/dashboard/salons")
+                    return
+                }
 
-        {/* Plan kártyák */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plans.map((plan) => {
-            const colors = colorMap[plan.color as keyof typeof colorMap]
-            const Icon = plan.icon
-            const price = plan.price[currency]
-            const isLoading = loading === plan.id
+                setSalons(normalized)
+                setSelectedSalonId((current) => current ?? normalized[0]?.id ?? null)
+            } catch (error) {
+                console.error("Error loading subscriptions:", error)
+                router.replace("/dashboard/salons")
+            } finally {
+                setLoading(false)
+            }
+        }
 
-            return (
-              <div
-                key={plan.id}
-                className={cn(
-                  "relative rounded-3xl border p-7 flex flex-col gap-6 transition-all",
-                  colors.bg,
-                  colors.border
-                )}
-              >
-                {/* Badge */}
-                {plan.badge && (
-                  <div className={cn(
-                    "absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold",
-                    colors.badge
-                  )}>
-                    {plan.badge}
-                  </div>
-                )}
+        loadSalons()
+    }, [router, userData?.id])
 
-                {/* Icon + Név */}
-                <div className="flex items-center gap-3">
-                  <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", colors.icon)}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="font-black text-gray-900 text-lg">{plan.name}</div>
-                    {plan.id !== "FREE" && (
-                      <div className="text-xs text-gray-400">havonta megújul</div>
-                    )}
-                  </div>
+    const selectedSalon = useMemo(
+        () => salons.find((salon) => salon.id === selectedSalonId) ?? salons[0] ?? null,
+        [salons, selectedSalonId]
+    )
+
+    if (loading) {
+        return (
+            <MainLayout showRightSidebar={false} fullWidth>
+                <div className="mx-auto flex min-h-[50vh] max-w-6xl items-center justify-center px-4 py-12">
+                    <div className="text-sm text-gray-500">Előfizetés betöltése...</div>
                 </div>
+            </MainLayout>
+        )
+    }
 
-                {/* Ár */}
-                <div>
-                  {price === 0 ? (
-                    <div className="text-3xl font-black text-gray-900">Ingyenes</div>
-                  ) : (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-black text-gray-900">
-                        {currency === "huf"
-                          ? `${price.toLocaleString("hu-HU")} Ft`
-                          : `${price.toFixed(2)} €`}
-                      </span>
-                      <span className="text-gray-400 text-sm">/hó</span>
+    if (!selectedSalon) {
+        return null
+    }
+
+    const subscription = selectedSalon.subscription
+    const currentPlan = subscription?.plan ?? "FREE"
+    const currentStatus = subscription?.status ?? "ACTIVE"
+
+    return (
+        <MainLayout showRightSidebar={false} fullWidth>
+            <AccountPageShell
+                icon={Crown}
+                title="Prémium előfizetés"
+                description="Itt tudod követni és később kezelni a szalonod csomagját, láthatósági előnyeit és prémium státuszát."
+                actions={
+                    <Button
+                        disabled
+                        className="h-12 rounded-2xl bg-primary px-6 text-white shadow-lg shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        Fizetési útvonal hamarosan
+                    </Button>
+                }
+                containerClassName="max-w-7xl"
+            >
+                <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+                    <div className="space-y-6">
+                        <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm">
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold uppercase tracking-[0.25em] text-gray-400">Aktív szalon</p>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-gray-50 ring-1 ring-gray-100">
+                                            {selectedSalon.profileImage ? (
+                                                <img
+                                                    src={selectedSalon.profileImage}
+                                                    alt={selectedSalon.name}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            ) : (
+                                                <Store className="h-6 w-6 text-gray-400" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h2 className="text-2xl font-black text-gray-900">{selectedSalon.name}</h2>
+                                            <p className="text-sm text-gray-500">
+                                                {selectedSalon.city}, {selectedSalon.address}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="rounded-2xl bg-gray-50 px-4 py-3">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Jelenlegi csomag</p>
+                                    <p className="mt-1 text-xl font-bold text-gray-900">{formatPlanName(currentPlan)}</p>
+                                </div>
+                            </div>
+
+                            {salons.length > 1 ? (
+                                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                                    {salons.map((salon) => {
+                                        const isActive = salon.id === selectedSalon.id
+                                        return (
+                                            <button
+                                                key={salon.id}
+                                                type="button"
+                                                onClick={() => setSelectedSalonId(salon.id)}
+                                                className={cn(
+                                                    "rounded-2xl border p-4 text-left transition-all",
+                                                    isActive
+                                                        ? "border-primary bg-primary/5 shadow-sm"
+                                                        : "border-gray-200 bg-white hover:border-primary/30"
+                                                )}
+                                            >
+                                                <p className="font-bold text-gray-900">{salon.name}</p>
+                                                <p className="mt-1 text-sm text-gray-500">{formatPlanName(salon.subscription?.plan ?? "FREE")}</p>
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            ) : null}
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-3">
+                            {planCards.map((plan) => {
+                                const isCurrent = currentPlan === plan.id
+                                return (
+                                    <div
+                                        key={plan.id}
+                                        className={cn(
+                                            "rounded-[28px] border p-5 shadow-sm transition-all",
+                                            plan.border,
+                                            plan.background
+                                        )}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <h3 className={cn("text-lg font-black", plan.accent)}>{plan.name}</h3>
+                                                <p className="mt-1 text-sm text-gray-500">{plan.subtitle}</p>
+                                            </div>
+                                            {isCurrent ? (
+                                                <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-primary shadow-sm">
+                                                    Aktív
+                                                </span>
+                                            ) : null}
+                                        </div>
+
+                                        <ul className="mt-5 space-y-3">
+                                            {plan.features.map((feature) => (
+                                                <li key={feature} className="flex items-start gap-2 text-sm text-gray-700">
+                                                    <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                                                    <span>{feature}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+
+                                        <Button
+                                            variant={isCurrent ? "outline" : "default"}
+                                            disabled
+                                            className={cn(
+                                                "mt-6 w-full rounded-xl",
+                                                !isCurrent && plan.id === "PREMIUM" ? "bg-primary text-white hover:bg-primary" : ""
+                                            )}
+                                        >
+                                            {isCurrent ? "Jelenlegi csomag" : `${plan.name} hamarosan`}
+                                        </Button>
+                                    </div>
+                                )
+                            })}
+                        </div>
                     </div>
-                  )}
-                  {plan.id === "FREE" && (
-                    <div className="text-sm text-gray-400 mt-1">2 hónapos próbaidőszak</div>
-                  )}
+
+                    <div className="space-y-6">
+                        <div className="rounded-[32px] border border-primary/15 bg-white p-6 shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                                    <Crown className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-gray-900">Prémium előnyök</h3>
+                                    <p className="text-sm text-gray-500">Mit ad a kiemelt tagság a szalonodnak.</p>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 space-y-4">
+                                {premiumBenefits.map((benefit) => {
+                                    const Icon = benefit.icon
+                                    return (
+                                        <div key={benefit.title} className="rounded-2xl bg-gray-50 p-4">
+                                            <div className="flex items-start gap-3">
+                                                <div className="rounded-xl bg-white p-2 text-primary shadow-sm">
+                                                    <Icon className="h-4 w-4" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900">{benefit.title}</h4>
+                                                    <p className="mt-1 text-sm leading-6 text-gray-500">{benefit.description}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm">
+                            <h3 className="text-lg font-black text-gray-900">Kiemelt megjelenés logikája</h3>
+                            <div className="mt-4 space-y-3 text-sm text-gray-600">
+                                <p>
+                                    A cél, hogy az adott városban először az aktív prémium előfizetésű szalonok jelenjenek meg a kiemelt blokkban.
+                                </p>
+                                <p>
+                                    Ha egy területen nincs prémium szalon, a blokk organikus minőségi jelek alapján töltődik fel: értékelések, aktivitás és láthatóság szerint.
+                                </p>
+                                <p className="font-medium text-gray-900">
+                                    A fizetési aktiválás és a tényleges csomagváltás külön lépés lesz, ez az oldal most a kezelőfelület alapja.
+                                </p>
+                            </div>
+
+                            <div className="mt-6 rounded-2xl bg-primary/5 p-4">
+                                <p className="text-sm font-semibold text-primary">Következő lépés</p>
+                                <p className="mt-1 text-sm text-gray-600">
+                                    A fizetési integráció után innen indul majd a csomagváltás, megújítás és státuszkezelés.
+                                </p>
+                                <div className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-primary">
+                                    Hamarosan aktiválható
+                                    <ArrowRight className="h-4 w-4" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                {/* Features */}
-                <ul className="space-y-2.5 flex-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-gray-700">
-                      <Check className={cn("h-4 w-4 mt-0.5 flex-shrink-0", colors.check)} />
-                      {f}
-                    </li>
-                  ))}
-                  {plan.limitations.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-gray-400 line-through">
-                      <span className="h-4 w-4 mt-0.5 flex-shrink-0 text-gray-300">✕</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                {/* CTA */}
-                <button
-                  onClick={() => handleSubscribe(plan.id)}
-                  disabled={plan.ctaDisabled || isLoading}
-                  className={cn(
-                    "w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all",
-                    colors.btn,
-                    isLoading && "opacity-70"
-                  )}
-                >
-                  {isLoading ? (
-                    <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      {plan.cta}
-                      {!plan.ctaDisabled && <ArrowRight className="h-4 w-4" />}
-                    </>
-                  )}
-                </button>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Éves kedvezmény info */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center shadow-sm">
-          <p className="text-gray-600 text-sm">
-            💡 <strong>Éves előfizetéssel 2 hónap ingyen!</strong> Hamarosan elérhető —
-            éves számlázás esetén Standard: ~{currency === "huf" ? "39 900 Ft" : "99 €"},
-            Prémium: ~{currency === "huf" ? "79 900 Ft" : "199 €"}/év.
-          </p>
-        </div>
-      </div>
-    </MainLayout>
-  )
+            </AccountPageShell>
+        </MainLayout>
+    )
 }

@@ -2,10 +2,14 @@
 
 
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
+import { getServerSession } from "next-auth"
 import prisma from "@/lib/db"
 import { generateUniqueSlug } from "@/lib/slug"
 import { Salon, Service, OpeningHour, ClosedDate, Post } from "@/lib/salon-types"
 import { requireSession } from "@/lib/auth-utils"
+import { writeAuditLog } from "@/lib/audit-log"
+import { authOptions } from "@/lib/auth-options"
 import {
   generateSalonFingerprint,
   checkFingerprintDuplicate,
@@ -14,6 +18,78 @@ import {
   incrementPostCount,
   canUploadVideo,
 } from "@/lib/subscription"
+
+const SALON_PROFILE_VIEW_ACTION = "SALON_PROFILE_VIEW"
+const SALON_VISITOR_SERIES_DAYS = 7
+
+function formatDateKey(date: Date) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+}
+
+function buildVisitorSeries(logs: Array<{ createdAt: Date }>, days: number = SALON_VISITOR_SERIES_DAYS) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const startDate = new Date(today)
+    startDate.setDate(today.getDate() - (days - 1))
+
+    const counts = new Map<string, number>()
+
+    for (const log of logs) {
+        const key = formatDateKey(new Date(log.createdAt))
+        counts.set(key, (counts.get(key) || 0) + 1)
+    }
+
+    return Array.from({ length: days }, (_, index) => {
+        const currentDate = new Date(startDate)
+        currentDate.setDate(startDate.getDate() + index)
+        const key = formatDateKey(currentDate)
+
+        return {
+            date: key,
+            label: currentDate.toLocaleDateString("hu-HU", { weekday: "short" }),
+            fullLabel: currentDate.toLocaleDateString("hu-HU", { month: "short", day: "numeric" }),
+            count: counts.get(key) || 0,
+        }
+    })
+}
+
+async function getSalonVisitorStatsInternal(salonId: string, days: number = SALON_VISITOR_SERIES_DAYS) {
+    const startDate = new Date()
+    startDate.setHours(0, 0, 0, 0)
+    startDate.setDate(startDate.getDate() - (days - 1))
+
+    const [recentLogs, totalViews] = await Promise.all([
+        prisma.auditLog.findMany({
+            where: {
+                action: SALON_PROFILE_VIEW_ACTION,
+                entity: "SALON",
+                entityId: salonId,
+                createdAt: { gte: startDate },
+            },
+            select: { createdAt: true },
+            orderBy: { createdAt: "asc" },
+        }),
+        prisma.auditLog.count({
+            where: {
+                action: SALON_PROFILE_VIEW_ACTION,
+                entity: "SALON",
+                entityId: salonId,
+            },
+        }),
+    ])
+
+    const series = buildVisitorSeries(recentLogs, days)
+
+    return {
+        totalViews,
+        todayViews: series[series.length - 1]?.count || 0,
+        series,
+    }
+}
 
 async function requireSalonOwner(salonId: string): Promise<string> {
     const sessionUserId = await requireSession()
@@ -48,6 +124,11 @@ async function requireServiceOwner(serviceId: string): Promise<void> {
 
 export async function getSalonData(salonId: string, userId: string) {
     try {
+        const sessionUserId = await requireSession()
+        if (sessionUserId !== userId) {
+            return null
+        }
+
         const salon = await prisma.salon.findUnique({
             where: { id: salonId },
             include: {
@@ -60,6 +141,8 @@ export async function getSalonData(salonId: string, userId: string) {
             }
         })
 
+        const visitorStats = await getSalonVisitorStatsInternal(salonId)
+
         if (!salon || salon.ownerId !== userId) {
             return null
         }
@@ -69,7 +152,8 @@ export async function getSalonData(salonId: string, userId: string) {
             services: salon.services,
             openingHours: salon.openingHours,
             closedDates: salon.closedDates,
-            posts: salon.posts
+            posts: salon.posts,
+            visitorStats,
         }
     } catch (error) {
         console.error("Error fetching salon data from Prisma:", error)
@@ -90,11 +174,56 @@ export async function getSalonName(salonId: string) {
 }
 
 export async function updateSalon(salonId: string, data: any) {
-    await requireSalonOwner(salonId)
-    const { teamMembers, ...salonData } = data;
+    const sessionUserId = await requireSalonOwner(salonId)
+    const { teamMembers, ...incomingSalonData } = data;
+
+    const editableSalonFields = new Set([
+        "name",
+        "country",
+        "city",
+        "district",
+        "street",
+        "houseNumber",
+        "floor",
+        "door",
+        "zipCode",
+        "address",
+        "categories",
+        "currency",
+        "description",
+        "images",
+        "profileImage",
+        "coverImage",
+        "email",
+        "phone",
+        "website",
+        "languages",
+        "lat",
+        "lng",
+        "ownerName",
+        "ownerImage",
+        "aboutMe",
+        "isTeam",
+        "allowMessages",
+        "allowBookings",
+        "showPhoneOnProfile",
+        "showEmailOnProfile",
+        "notifyNewMessage",
+        "notifyNewBooking",
+        "notifyNewReview",
+        "notifyNewFavorite",
+        "notifyPostLike",
+        "notifyPostComment",
+        "notifyWeeklyStats",
+        "notifyMonthlyStats",
+    ])
+
+    const salonData = Object.fromEntries(
+        Object.entries(incomingSalonData).filter(([key]) => editableSalonFields.has(key))
+    );
 
     try {
-        return await prisma.$transaction(async (tx) => {
+        const updatedSalon = await prisma.$transaction(async (tx) => {
             // Update basic salon data
             const updatedSalon = await tx.salon.update({
                 where: { id: salonId },
@@ -125,6 +254,19 @@ export async function updateSalon(salonId: string, data: any) {
 
             return updatedSalon;
         });
+
+        await writeAuditLog({
+            action: "UPDATE_SALON",
+            userId: sessionUserId,
+            entity: "SALON",
+            entityId: salonId,
+            metadata: {
+                salonId,
+                updatedFields: Object.keys(salonData)
+            }
+        })
+
+        return updatedSalon
     } catch (error) {
         console.error("Error updating salon with team members:", error)
         throw error;
@@ -132,6 +274,9 @@ export async function updateSalon(salonId: string, data: any) {
 }
 export async function getUserSalons(userId: string) {
     try {
+        const sessionUserId = await requireSession()
+        if (sessionUserId !== userId) throw new Error("Nincs jogosultságod más felhasználó szalonjait megtekinteni.")
+
         return await prisma.salon.findMany({
             where: { ownerId: userId },
             include: {
@@ -209,6 +354,9 @@ export async function isSalonFavorite(salonId: string, userId: string) {
 
 export async function getUserFavorites(userId: string) {
     try {
+        const sessionUserId = await requireSession()
+        if (sessionUserId !== userId) throw new Error("Nincs jogosultságod más felhasználó kedvenceit megtekinteni.")
+
         return await prisma.favorite.findMany({
             where: { userId },
             include: {
@@ -232,6 +380,13 @@ export async function createSalon(data: any) {
     if (data.ownerId !== sessionUserId) throw new Error("Nincs jogosultságod más nevében szalont létrehozni.")
 
     // Duplikáció ellenőrzés fingerprint alapján (globálisan, lejárt szalonokra is)
+    const existingSalonCount = await prisma.salon.count({
+        where: { ownerId: sessionUserId }
+    })
+    if (existingSalonCount > 0) {
+        throw new Error("Az MVP verziÃ³ban jelenleg egy felhasznÃ¡lÃ³ csak egy szalont hozhat lÃ©tre.")
+    }
+
     const fingerprint = generateSalonFingerprint(data.phone, data.address)
     const dupCheck = await checkFingerprintDuplicate(fingerprint)
     if (dupCheck.duplicate) {
@@ -309,6 +464,22 @@ export async function createSalon(data: any) {
 
         // FREE Subscription rekord automatikus létrehozása
         await initSubscription(salon.id, billingCurrency as "HUF" | "EUR")
+        await prisma.user.update({
+            where: { id: sessionUserId },
+            data: { role: "provider" }
+        })
+
+        await writeAuditLog({
+            action: "CREATE_SALON",
+            userId: sessionUserId,
+            entity: "SALON",
+            entityId: salon.id,
+            metadata: {
+                salonId: salon.id,
+                name: salon.name,
+                city: salon.city
+            }
+        })
 
         return salon
     } catch (error) {
@@ -382,13 +553,12 @@ export async function getFeaturedSalons({
             categories: true,
             city: true,
             rating: true,
-            subscriptionPlan: true,
         }
 
         // 1. Prémium szalonok
         const premiumSalons = await prisma.salon.findMany({
-            where: { ...baseWhere, subscriptionPlan: "premium" },
-            orderBy: { rating: "desc" },
+            where: baseWhere,
+            orderBy: [{ reviewCount: "desc" }, { rating: "desc" }, { createdAt: "desc" }],
             take: limit,
             select,
         })
@@ -401,10 +571,9 @@ export async function getFeaturedSalons({
         const popularSalons = await prisma.salon.findMany({
             where: {
                 ...baseWhere,
-                subscriptionPlan: { not: "premium" },
                 id: { notIn: excludeIds },
             },
-            orderBy: [{ reviewCount: "desc" }, { rating: "desc" }],
+            orderBy: [{ reviewCount: "desc" }, { rating: "desc" }, { createdAt: "desc" }],
             take: remaining,
             select,
         })
@@ -440,10 +609,16 @@ export async function getRecentSalons(limit = 4) {
 
 export async function getPublicSalonData(slug: string) {
     try {
+        const identifier = slug?.trim()
+        if (!identifier) return null
+
         const salon = await prisma.salon.findFirst({
             where: {
-                slug,
-                isActive: true
+                isActive: true,
+                OR: [
+                    { slug: identifier },
+                    { id: identifier },
+                ],
             },
             include: {
                 services: true,
@@ -471,11 +646,14 @@ export async function getPublicSalonData(slug: string) {
 
         if (!salon) return null;
 
+        const visitorStats = await getSalonVisitorStatsInternal(salon.id)
+
         const s = salon as any;
 
         // Serialize complex objects (Dates, Decimals) to plain JSON
         return {
             ...s,
+            profileViewCount: visitorStats.totalViews,
             openingHours: s.openingHours?.map((oh: any) => ({
                 ...oh,
                 open: oh.open,
@@ -503,47 +681,135 @@ export async function getPublicSalonData(slug: string) {
     }
 }
 
+export async function trackPublicSalonView(salonId: string) {
+    try {
+        if (!salonId) {
+            return { tracked: false, totalViews: 0 }
+        }
+
+        const [salon, session, headerStore] = await Promise.all([
+            prisma.salon.findUnique({
+                where: { id: salonId },
+                select: { id: true, ownerId: true, isActive: true },
+            }),
+            getServerSession(authOptions),
+            headers(),
+        ])
+
+        if (!salon?.isActive) {
+            return { tracked: false, totalViews: 0 }
+        }
+
+        const sessionUserId = session?.user?.id ?? null
+        if (sessionUserId && sessionUserId === salon.ownerId) {
+            const stats = await getSalonVisitorStatsInternal(salonId)
+            return { tracked: false, totalViews: stats.totalViews }
+        }
+
+        const forwardedFor = headerStore.get("x-forwarded-for")
+        const realIp = headerStore.get("x-real-ip")
+        const ipAddress = forwardedFor?.split(",")[0]?.trim() || realIp || null
+        const userAgent = headerStore.get("user-agent")
+
+        await writeAuditLog({
+            action: SALON_PROFILE_VIEW_ACTION,
+            userId: sessionUserId,
+            entity: "SALON",
+            entityId: salonId,
+            ipAddress,
+            userAgent,
+            metadata: {
+                source: "public_profile",
+            },
+        })
+
+        const stats = await getSalonVisitorStatsInternal(salonId)
+
+        return {
+            tracked: true,
+            totalViews: stats.totalViews,
+        }
+    } catch (error) {
+        console.error("Error tracking salon profile view:", error)
+        return { tracked: false, totalViews: 0 }
+    }
+}
+
+export async function getSalonVisitorStats(salonId: string) {
+    await requireSalonOwner(salonId)
+    return getSalonVisitorStatsInternal(salonId)
+}
+
 export async function getRecentPosts(page: number = 1, filters: {
     lat?: number;
     lng?: number;
     radius?: number;
     categories?: string[];
+    minRating?: number | null;
+    searchQuery?: string;
 } = {}, currentUserId?: string) {
     try {
         const where: any = { isActive: true }
+        const salonConditions: any = {}
 
-        if (filters) {
-            const salonConditions: any = {}
+        if (filters.lat && filters.lng && filters.radius) {
+            const radiusInDegrees = filters.radius / 111.32 // 1 degree is approx 111.32km
+            const latDelta = radiusInDegrees
+            const lngDelta = radiusInDegrees / Math.cos(filters.lat * Math.PI / 180)
 
-            if (filters.lat && filters.lng && filters.radius) {
-                const radiusInDegrees = filters.radius / 111.32 // 1 degree is approx 111.32km
-                const latDelta = radiusInDegrees
-                const lngDelta = radiusInDegrees / Math.cos(filters.lat * Math.PI / 180)
-
-                salonConditions.lat = {
-                    gte: filters.lat - latDelta,
-                    lte: filters.lat + latDelta
-                }
-                salonConditions.lng = {
-                    gte: filters.lng - lngDelta,
-                    lte: filters.lng + lngDelta
-                }
+            salonConditions.lat = {
+                gte: filters.lat - latDelta,
+                lte: filters.lat + latDelta
             }
+            salonConditions.lng = {
+                gte: filters.lng - lngDelta,
+                lte: filters.lng + lngDelta
+            }
+        }
 
-            if (filters.categories && filters.categories.length > 0) {
-                salonConditions.categories = {
-                    hasSome: filters.categories
+        if (filters.categories && filters.categories.length > 0) {
+            salonConditions.categories = {
+                hasSome: filters.categories
+            }
+        }
+
+        if (filters.minRating) {
+            salonConditions.rating = {
+                gte: filters.minRating
+            }
+        }
+
+        if (Object.keys(salonConditions).length > 0) {
+            where.salon = salonConditions
+        }
+
+        if (filters.searchQuery?.trim()) {
+            const searchQuery = filters.searchQuery.trim()
+            where.OR = [
+                {
+                    content: {
+                        contains: searchQuery,
+                        mode: "insensitive"
+                    }
+                },
+                {
+                    salon: {
+                        name: {
+                            contains: searchQuery,
+                            mode: "insensitive"
+                        }
+                    }
                 }
-            }
-
-            if (Object.keys(salonConditions).length > 0) {
-                where.salon = salonConditions
-            }
+            ]
         }
 
         const posts = await prisma.post.findMany({
             where,
-            orderBy: { createdAt: 'desc' },
+            orderBy: [
+                { createdAt: 'desc' },
+                { salon: { rating: 'desc' } },
+                { salon: { reviewCount: 'desc' } }
+            ],
             take: 20,
             skip: (page - 1) * 20,
             include: {
@@ -704,8 +970,39 @@ export async function sendMessage(data: {
         throw new Error("Nem küldhetsz üzenetet magadnak!")
     }
 
+    if (data.salonId) {
+        const salon = await prisma.salon.findUnique({
+            where: { id: data.salonId },
+            select: { ownerId: true, allowMessages: true }
+        })
+
+        if (!salon) {
+            throw new Error("A szalon nem talÃ¡lhatÃ³.")
+        }
+
+        if (salon.ownerId !== data.receiverId) {
+            throw new Error("Az Ã¼zenet cÃ­mzettje nem egyezik a szalon tulajdonosÃ¡val.")
+        }
+
+        if (!salon.allowMessages) {
+            throw new Error("Ez a szalon jelenleg nem fogad Ã¼zeneteket.")
+        }
+    }
+
     const message = await prisma.message.create({
         data
+    })
+
+    await writeAuditLog({
+        action: "SEND_MESSAGE",
+        userId: sessionUserId,
+        entity: "MESSAGE",
+        entityId: message.id,
+        metadata: {
+            receiverId: data.receiverId,
+            salonId: data.salonId ?? null,
+            subject: data.subject ?? null
+        }
     })
 
     revalidatePath("/dashboard/messages")
@@ -727,6 +1024,20 @@ export async function getUserMessages(userId: string) {
             salon: { select: { id: true, name: true } }
         },
         orderBy: { createdAt: 'desc' }
+    })
+}
+
+export async function getSalonMessages(salonId: string) {
+    await requireSalonOwner(salonId)
+
+    return await prisma.message.findMany({
+        where: { salonId },
+        include: {
+            sender: { select: { id: true, name: true, image: true } },
+            receiver: { select: { id: true, name: true, image: true } },
+            salon: { select: { id: true, name: true } }
+        },
+        orderBy: { createdAt: "desc" }
     })
 }
 
@@ -759,6 +1070,9 @@ export async function getAdminUser() {
 }
 export async function getUnreadMessageCount(userId: string) {
     try {
+        const sessionUserId = await requireSession()
+        if (sessionUserId !== userId) throw new Error("Nincs jogosultságod más felhasználó üzenetszámát megtekinteni.")
+
         const count = await prisma.message.count({
             where: {
                 receiverId: userId,
@@ -810,32 +1124,302 @@ export async function addComment(postId: string, userId: string, content: string
     return comment
 }
 
+export async function toggleCommentLike(commentId: string, userId: string) {
+    const sessionUserId = await requireSession()
+    if (sessionUserId !== userId) {
+        throw new Error("Nincs jogosultságod ezt a műveletet elvégezni.")
+    }
+
+    const existingLike = await prisma.commentLike.findUnique({
+        where: {
+            userId_commentId: { userId, commentId }
+        }
+    })
+
+    if (existingLike) {
+        await prisma.commentLike.delete({
+            where: { id: existingLike.id }
+        })
+    } else {
+        await prisma.commentLike.create({
+            data: { userId, commentId }
+        })
+    }
+
+    const likeCount = await prisma.commentLike.count({
+        where: { commentId }
+    })
+
+    revalidatePath("/")
+    revalidatePath("/profile/me")
+
+    return {
+        isLiked: !existingLike,
+        likeCount
+    }
+}
+
 export async function getPostComments(postId: string) {
-    return await prisma.comment.findMany({
+    const session = await getServerSession(authOptions)
+    const currentUserId = session?.user?.id ?? null
+
+    const comments = await prisma.comment.findMany({
         where: { postId },
         include: {
-            user: { select: { id: true, name: true, image: true } }
+            user: { select: { id: true, name: true, image: true } },
+            likes: {
+                select: { userId: true }
+            }
         },
         orderBy: { createdAt: 'asc' }
     })
+
+    return comments.map((comment) => ({
+        ...comment,
+        likeCount: comment.likes.length,
+        isLiked: currentUserId ? comment.likes.some((like) => like.userId === currentUserId) : false,
+    }))
 }
 
 // Booking Actions (Skeleton)
 export async function createBooking(data: any) {
     const sessionUserId = await requireSession()
-    if (data.userId !== sessionUserId) throw new Error("Nincs jogosultságod más nevében foglalást létrehozni.")
-    // Backend only for now
-    return await prisma.booking.create({
-        data: {
-            date: new Date(data.date),
-            time: data.time,
-            userId: data.userId,
+
+    if (data.userId !== sessionUserId) {
+        throw new Error("Nincs jogosultsagod mas neveben idopontkerest letrehozni.")
+    }
+
+    const salon = await prisma.salon.findUnique({
+        where: { id: data.salonId },
+        select: { allowBookings: true, ownerId: true }
+    })
+
+    if (!salon) {
+        throw new Error("A szalon nem talalhato.")
+    }
+
+    if (!salon.allowBookings) {
+        throw new Error("Ez a szalon jelenleg nem fogad idopontkereseket.")
+    }
+
+    if (!data.serviceId) {
+        throw new Error("Az idopontkereshez valassz ki egy szolgaltatast.")
+    }
+
+    const selectedService = await prisma.service.findUnique({
+        where: { id: data.serviceId },
+        select: { id: true, salonId: true, name: true }
+    })
+
+    if (!selectedService) {
+        throw new Error("A kivalasztott szolgaltatas nem talalhato.")
+    }
+
+    if (selectedService.salonId !== data.salonId) {
+        throw new Error("A kivalasztott szolgaltatas nem ehhez a szalonhoz tartozik.")
+    }
+
+    const normalizedMessage = data.message?.trim() || null
+
+    const booking = await prisma.$transaction(async (tx) => {
+        const createdBooking = await tx.booking.create({
+            data: {
+                date: new Date(data.date),
+                time: data.time || "Idopont egyeztetes szukseges",
+                userId: data.userId,
+                salonId: data.salonId,
+                serviceId: selectedService.id,
+                status: "pending"
+            }
+        })
+
+        if (normalizedMessage) {
+            await tx.message.create({
+                data: {
+                    senderId: sessionUserId,
+                    receiverId: salon.ownerId,
+                    salonId: data.salonId,
+                    subject: `APPOINTMENT_REQUEST:${createdBooking.id}`,
+                    content: normalizedMessage
+                }
+            })
+        }
+
+        return createdBooking
+    })
+
+    await writeAuditLog({
+        action: "CREATE_BOOKING_REQUEST",
+        userId: sessionUserId,
+        entity: "BOOKING",
+        entityId: booking.id,
+        metadata: {
             salonId: data.salonId,
-            serviceId: data.serviceId,
-            status: "pending"
+            serviceId: selectedService.id,
+            requestedServiceName: selectedService.name,
+            message: normalizedMessage
+        }
+    })
+
+    return booking
+}
+
+export async function getSalonBookingRequests(salonId: string) {
+    await requireSalonOwner(salonId)
+
+    const bookings = await prisma.booking.findMany({
+        where: { salonId },
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true
+                }
+            },
+            service: {
+                select: {
+                    id: true,
+                    name: true
+                }
+            }
+        },
+        orderBy: { createdAt: "desc" },
+        take: 50
+    })
+
+    const bookingIds = bookings.map((booking) => booking.id)
+    const bookingAuditLogs = bookingIds.length > 0
+        ? await prisma.auditLog.findMany({
+            where: {
+                action: "CREATE_BOOKING_REQUEST",
+                entityId: {
+                    in: bookingIds
+                }
+            },
+            select: {
+                entityId: true,
+                metadata: true
+            }
+        })
+        : []
+    const requestMessages = bookingIds.length > 0
+        ? await prisma.message.findMany({
+            where: {
+                salonId,
+                subject: {
+                    startsWith: "APPOINTMENT_REQUEST:"
+                }
+            },
+            select: {
+                subject: true,
+                content: true
+            }
+        })
+        : []
+
+    const auditMetadataByBookingId = new Map<string, any>()
+    for (const log of bookingAuditLogs) {
+        if (log.entityId) {
+            auditMetadataByBookingId.set(log.entityId, log.metadata)
+        }
+    }
+
+    const messageByBookingId = new Map<string, string>()
+    for (const message of requestMessages) {
+        const bookingId = message.subject?.replace("APPOINTMENT_REQUEST:", "")
+        if (bookingId && bookingIds.includes(bookingId) && !messageByBookingId.has(bookingId)) {
+            messageByBookingId.set(bookingId, message.content)
+        }
+    }
+
+    return bookings.map((booking) => {
+        const auditMetadata = auditMetadataByBookingId.get(booking.id) as any
+
+        return {
+            id: booking.id,
+            status: booking.status,
+            date: booking.date,
+            createdAt: booking.createdAt,
+            userId: booking.userId,
+            userName: booking.user?.name || null,
+            serviceId: booking.serviceId,
+            serviceName: auditMetadata?.requestedServiceName || booking.service?.name || null,
+            message: messageByBookingId.get(booking.id) || auditMetadata?.message || null
         }
     })
 }
+
+export async function getCurrentUserBookings() {
+    const sessionUserId = await requireSession()
+
+    return await prisma.booking.findMany({
+        where: { userId: sessionUserId },
+        include: {
+            salon: {
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    city: true,
+                    profileImage: true,
+                    images: true
+                }
+            },
+            service: {
+                select: {
+                    id: true,
+                    name: true
+                }
+            }
+        },
+        orderBy: { createdAt: "desc" },
+        take: 50
+    })
+}
+
+async function updateBookingRequestStatus(bookingId: string, status: "accepted" | "rejected") {
+    const sessionUserId = await requireSession()
+
+    const booking = await prisma.booking.findUnique({
+        where: { id: bookingId },
+        select: {
+            id: true,
+            status: true,
+            salon: {
+                select: {
+                    ownerId: true
+                }
+            }
+        }
+    })
+
+    if (!booking) {
+        throw new Error("Az idopontkeres nem talalhato.")
+    }
+
+    if (booking.salon.ownerId !== sessionUserId) {
+        throw new Error("Nincs jogosultsagod ehhez az idopontkereshez.")
+    }
+
+    if (booking.status !== "pending") {
+        throw new Error("Ez az idopontkeres mar el lett biralva.")
+    }
+
+    return await prisma.booking.update({
+        where: { id: bookingId },
+        data: { status }
+    })
+}
+
+export async function acceptBookingRequest(bookingId: string) {
+    return await updateBookingRequestStatus(bookingId, "accepted")
+}
+
+export async function rejectBookingRequest(bookingId: string) {
+    return await updateBookingRequestStatus(bookingId, "rejected")
+}
+
 export async function createReview(data: {
     salonId: string;
     userId: string;
@@ -885,3 +1469,4 @@ export async function createReview(data: {
         throw error
     }
 }
+

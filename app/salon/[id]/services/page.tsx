@@ -56,8 +56,8 @@ export default function SalonServicesPage({ params }: { params: Promise<{ id: st
 
     if (loading) {
         return (
-            <MainLayout>
-                <div className="container mx-auto p-6">
+            <MainLayout showRightSidebar={false} fullWidth>
+                <div className="w-full max-w-5xl p-6 lg:mr-auto">
                     <div className="text-muted-foreground">Betöltés...</div>
                 </div>
             </MainLayout>
@@ -70,8 +70,8 @@ export default function SalonServicesPage({ params }: { params: Promise<{ id: st
     }
 
     return (
-        <MainLayout showRightSidebar={false}>
-            <div className="container mx-auto p-6 space-y-8">
+        <MainLayout showRightSidebar={false} fullWidth>
+            <div className="w-full max-w-5xl space-y-8 p-6 lg:mr-auto">
                 <h1 className="text-3xl font-bold mb-6">Szolgáltatások</h1>
                 <ServicesCard
                     services={services}

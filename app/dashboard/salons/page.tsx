@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus, MapPin, Star, Store } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
@@ -11,12 +10,17 @@ import { getUserSalons } from "@/lib/actions/salon"
 import Link from "next/link"
 import { SalonWizard } from "@/components/wizard/SalonWizard"
 import { SubscriptionBadge } from "@/components/dashboard/SubscriptionBadge"
+import { AccountPageShell } from "@/components/account/account-page-shell"
+import { AccountEmptyState } from "@/components/account/account-empty-state"
 
 export default function SalonsPage() {
     const { userData } = useAuth()
     const [salons, setSalons] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+    const isOnboardingOnly = userData?.role === "visitor" && salons.length === 0
+    const hasSalon = salons.length > 0
+    const primarySalon = salons[0]
 
     const fetchSalons = useCallback(async () => {
         if (!userData?.id) return
@@ -40,67 +44,78 @@ export default function SalonsPage() {
     }
 
     return (
-        <MainLayout showRightSidebar={false} fullWidth={true}>
-            <div className="p-6 md:p-10 space-y-8">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex flex-col gap-1">
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Szalonjaim</h1>
-                        <p className="text-gray-500">Kezeld a regisztrált szépségszalonjaidat.</p>
-                    </div>
-                    <Button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="bg-primary hover:bg-primary text-white rounded-2xl px-6 h-12 shadow-lg shadow-primary/20/50 transition-all hover:-translate-y-0.5"
-                    >
-                        <Plus className="mr-2 h-5 w-5" />
-                        Új szalon hozzáadása
-                    </Button>
-                </div>
-
-                {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                ) : salons.length === 0 ? (
-                    <div className="rounded-3xl bg-white p-12 text-center border-2 border-dashed border-gray-100 shadow-sm">
-                        <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Store className="h-8 w-8 text-primary" />
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Még nincs regisztrált szalonod</h3>
-                        <p className="text-gray-500 mb-8 max-w-md mx-auto">
-                            Hozd létre az első szalonodat, hogy elkezdd hirdetni a szolgáltatásaidat és fogadd az ügyfeleket.
-                        </p>
+        <MainLayout showRightSidebar={false} fullWidth>
+            <AccountPageShell
+                icon={Store}
+                title={isOnboardingOnly ? "Hozd létre az első szalonodat" : "Szalonjaim"}
+                description={
+                    isOnboardingOnly
+                        ? "Itt tudod elindítani a szolgáltatói onboardingot és létrehozni az első szalonprofilodat."
+                        : "Kezeld a regisztrált szépségszalonjaidat."
+                }
+                actions={
+                    hasSalon && primarySalon ? (
+                        <Button asChild className="h-12 rounded-2xl bg-primary px-6 text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary hover:-translate-y-0.5">
+                            <Link href={`/salon/${primarySalon.id}`}>Szalon kezelése</Link>
+                        </Button>
+                    ) : (
                         <Button
                             onClick={() => setIsCreateModalOpen(true)}
-                            variant="outline"
-                            className="rounded-xl border-gray-200"
+                            className="h-12 rounded-2xl bg-primary px-6 text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary hover:-translate-y-0.5"
                         >
-                            Szalon létrehozása
+                            <Plus className="mr-2 h-5 w-5" />
+                            {isOnboardingOnly ? "Szalon létrehozása" : "Új szalon hozzáadása"}
                         </Button>
+                    )
+                }
+            >
+                {loading ? (
+                    <div className="flex items-center justify-center py-20">
+                        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
                     </div>
+                ) : salons.length === 0 ? (
+                    <AccountEmptyState
+                        icon={Store}
+                        title={isOnboardingOnly ? "Indítsd el a szolgáltatói profilodat" : "Még nincs regisztrált szalonod"}
+                        description={
+                            isOnboardingOnly
+                                ? "Hozd létre az első szalonodat, hogy megjelenhess a platformon és fogadhass üzeneteket, megkereséseket."
+                                : "Hozd létre az első szalonodat, hogy elkezdd hirdetni a szolgáltatásaidat és fogadd az ügyfeleket."
+                        }
+                        action={
+                            <Button
+                                onClick={() => setIsCreateModalOpen(true)}
+                                variant="outline"
+                                className="rounded-xl border-gray-200"
+                            >
+                                Szalon létrehozása
+                            </Button>
+                        }
+                    />
                 ) : (
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                         {salons.map((salon) => (
                             <Link key={salon.id} href={`/salon/${salon.id}`} className="group">
-                                <div className="bg-white rounded-[32px] overflow-hidden shadow-sm ring-1 ring-gray-900/5 transition-all duration-300 hover:shadow-xl hover:ring-primary/10 hover:-translate-y-1 h-full flex flex-col">
-                                    <div className="h-56 bg-gray-50 relative overflow-hidden">
+                                <div className="flex h-full flex-col overflow-hidden rounded-[32px] bg-white shadow-sm ring-1 ring-gray-900/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-primary/10">
+                                    <div className="relative h-56 overflow-hidden bg-gray-50">
                                         {salon.images?.[0] ? (
                                             <img
                                                 src={salon.images[0]}
                                                 alt={salon.name}
-                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 gap-2">
+                                            <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-gray-300">
                                                 <Store className="h-10 w-10" />
                                                 <span className="text-xs font-medium uppercase tracking-widest">Nincs kép</span>
                                             </div>
                                         )}
-                                        <div className="absolute top-4 right-4 bg-white/95 backdrop-blur shadow-sm rounded-xl px-2 py-1 flex items-center gap-1">
+                                        <div className="absolute right-4 top-4 flex items-center gap-1 rounded-xl bg-white/95 px-2 py-1 shadow-sm backdrop-blur">
                                             <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                                             <span className="text-xs font-black text-gray-900">{salon.rating.toFixed(1)}</span>
                                         </div>
                                         {salon.subscription && (
-                                            <div className="absolute top-4 left-4">
+                                            <div className="absolute left-4 top-4">
                                                 <SubscriptionBadge
                                                     plan={salon.subscription.plan}
                                                     status={salon.subscription.status}
@@ -111,17 +126,17 @@ export default function SalonsPage() {
                                             </div>
                                         )}
                                     </div>
-                                    <div className="p-6 flex-1 flex flex-col">
-                                        <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors line-clamp-1">{salon.name}</h3>
-                                        <div className="flex items-start gap-1.5 text-gray-500 text-sm mb-4">
-                                            <MapPin className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
+                                    <div className="flex flex-1 flex-col p-6">
+                                        <h3 className="mb-2 line-clamp-1 text-xl font-bold text-gray-900 transition-colors group-hover:text-primary">{salon.name}</h3>
+                                        <div className="mb-4 flex items-start gap-1.5 text-sm text-gray-500">
+                                            <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
                                             <span className="line-clamp-2">{salon.city}, {salon.address}</span>
                                         </div>
-                                        <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                {salon.reviewCount} Értékelés
+                                        <div className="mt-auto flex items-center justify-between border-t border-gray-50 pt-4">
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                {salon.reviewCount} értékelés
                                             </span>
-                                            <div className="h-8 w-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 transition-all group-hover:bg-primary group-hover:text-white">
                                                 <Plus className="h-4 w-4" />
                                             </div>
                                         </div>
@@ -137,7 +152,7 @@ export default function SalonsPage() {
                     onClose={() => setIsCreateModalOpen(false)}
                     onSuccess={handleCreateSuccess}
                 />
-            </div>
+            </AccountPageShell>
         </MainLayout>
     )
 }
