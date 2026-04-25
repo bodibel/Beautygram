@@ -1,10 +1,15 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { ArrowLeft, SlidersHorizontal } from "lucide-react"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { useFilter } from "@/lib/filter-context"
-import { FilterPanel } from "@/components/layout/filter-panel"
+
+const FilterPanel = dynamic(
+  () => import("@/components/layout/filter-panel").then((mod) => mod.FilterPanel),
+  { ssr: false }
+)
 
 interface FilterModalProps {
   isOpen: boolean

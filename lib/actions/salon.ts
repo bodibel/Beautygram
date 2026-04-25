@@ -2,11 +2,14 @@
 
 
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
+import { getServerSession } from "next-auth"
 import prisma from "@/lib/db"
 import { generateUniqueSlug } from "@/lib/slug"
 import { Salon, Service, OpeningHour, ClosedDate, Post } from "@/lib/salon-types"
 import { requireSession } from "@/lib/auth-utils"
 import { writeAuditLog } from "@/lib/audit-log"
+import { authOptions } from "@/lib/auth-options"
 import {
   generateSalonFingerprint,
   checkFingerprintDuplicate,
@@ -15,6 +18,78 @@ import {
   incrementPostCount,
   canUploadVideo,
 } from "@/lib/subscription"
+
+const SALON_PROFILE_VIEW_ACTION = "SALON_PROFILE_VIEW"
+const SALON_VISITOR_SERIES_DAYS = 7
+
+function formatDateKey(date: Date) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+}
+
+function buildVisitorSeries(logs: Array<{ createdAt: Date }>, days: number = SALON_VISITOR_SERIES_DAYS) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const startDate = new Date(today)
+    startDate.setDate(today.getDate() - (days - 1))
+
+    const counts = new Map<string, number>()
+
+    for (const log of logs) {
+        const key = formatDateKey(new Date(log.createdAt))
+        counts.set(key, (counts.get(key) || 0) + 1)
+    }
+
+    return Array.from({ length: days }, (_, index) => {
+        const currentDate = new Date(startDate)
+        currentDate.setDate(startDate.getDate() + index)
+        const key = formatDateKey(currentDate)
+
+        return {
+            date: key,
+            label: currentDate.toLocaleDateString("hu-HU", { weekday: "short" }),
+            fullLabel: currentDate.toLocaleDateString("hu-HU", { month: "short", day: "numeric" }),
+            count: counts.get(key) || 0,
+        }
+    })
+}
+
+async function getSalonVisitorStatsInternal(salonId: string, days: number = SALON_VISITOR_SERIES_DAYS) {
+    const startDate = new Date()
+    startDate.setHours(0, 0, 0, 0)
+    startDate.setDate(startDate.getDate() - (days - 1))
+
+    const [recentLogs, totalViews] = await Promise.all([
+        prisma.auditLog.findMany({
+            where: {
+                action: SALON_PROFILE_VIEW_ACTION,
+                entity: "SALON",
+                entityId: salonId,
+                createdAt: { gte: startDate },
+            },
+            select: { createdAt: true },
+            orderBy: { createdAt: "asc" },
+        }),
+        prisma.auditLog.count({
+            where: {
+                action: SALON_PROFILE_VIEW_ACTION,
+                entity: "SALON",
+                entityId: salonId,
+            },
+        }),
+    ])
+
+    const series = buildVisitorSeries(recentLogs, days)
+
+    return {
+        totalViews,
+        todayViews: series[series.length - 1]?.count || 0,
+        series,
+    }
+}
 
 async function requireSalonOwner(salonId: string): Promise<string> {
     const sessionUserId = await requireSession()
@@ -66,6 +141,8 @@ export async function getSalonData(salonId: string, userId: string) {
             }
         })
 
+        const visitorStats = await getSalonVisitorStatsInternal(salonId)
+
         if (!salon || salon.ownerId !== userId) {
             return null
         }
@@ -75,7 +152,8 @@ export async function getSalonData(salonId: string, userId: string) {
             services: salon.services,
             openingHours: salon.openingHours,
             closedDates: salon.closedDates,
-            posts: salon.posts
+            posts: salon.posts,
+            visitorStats,
         }
     } catch (error) {
         console.error("Error fetching salon data from Prisma:", error)
@@ -568,11 +646,14 @@ export async function getPublicSalonData(slug: string) {
 
         if (!salon) return null;
 
+        const visitorStats = await getSalonVisitorStatsInternal(salon.id)
+
         const s = salon as any;
 
         // Serialize complex objects (Dates, Decimals) to plain JSON
         return {
             ...s,
+            profileViewCount: visitorStats.totalViews,
             openingHours: s.openingHours?.map((oh: any) => ({
                 ...oh,
                 open: oh.open,
@@ -598,6 +679,65 @@ export async function getPublicSalonData(slug: string) {
         console.error("Error fetching public salon data:", error)
         return null
     }
+}
+
+export async function trackPublicSalonView(salonId: string) {
+    try {
+        if (!salonId) {
+            return { tracked: false, totalViews: 0 }
+        }
+
+        const [salon, session, headerStore] = await Promise.all([
+            prisma.salon.findUnique({
+                where: { id: salonId },
+                select: { id: true, ownerId: true, isActive: true },
+            }),
+            getServerSession(authOptions),
+            headers(),
+        ])
+
+        if (!salon?.isActive) {
+            return { tracked: false, totalViews: 0 }
+        }
+
+        const sessionUserId = session?.user?.id ?? null
+        if (sessionUserId && sessionUserId === salon.ownerId) {
+            const stats = await getSalonVisitorStatsInternal(salonId)
+            return { tracked: false, totalViews: stats.totalViews }
+        }
+
+        const forwardedFor = headerStore.get("x-forwarded-for")
+        const realIp = headerStore.get("x-real-ip")
+        const ipAddress = forwardedFor?.split(",")[0]?.trim() || realIp || null
+        const userAgent = headerStore.get("user-agent")
+
+        await writeAuditLog({
+            action: SALON_PROFILE_VIEW_ACTION,
+            userId: sessionUserId,
+            entity: "SALON",
+            entityId: salonId,
+            ipAddress,
+            userAgent,
+            metadata: {
+                source: "public_profile",
+            },
+        })
+
+        const stats = await getSalonVisitorStatsInternal(salonId)
+
+        return {
+            tracked: true,
+            totalViews: stats.totalViews,
+        }
+    } catch (error) {
+        console.error("Error tracking salon profile view:", error)
+        return { tracked: false, totalViews: 0 }
+    }
+}
+
+export async function getSalonVisitorStats(salonId: string) {
+    await requireSalonOwner(salonId)
+    return getSalonVisitorStatsInternal(salonId)
 }
 
 export async function getRecentPosts(page: number = 1, filters: {
@@ -984,14 +1124,61 @@ export async function addComment(postId: string, userId: string, content: string
     return comment
 }
 
+export async function toggleCommentLike(commentId: string, userId: string) {
+    const sessionUserId = await requireSession()
+    if (sessionUserId !== userId) {
+        throw new Error("Nincs jogosultságod ezt a műveletet elvégezni.")
+    }
+
+    const existingLike = await prisma.commentLike.findUnique({
+        where: {
+            userId_commentId: { userId, commentId }
+        }
+    })
+
+    if (existingLike) {
+        await prisma.commentLike.delete({
+            where: { id: existingLike.id }
+        })
+    } else {
+        await prisma.commentLike.create({
+            data: { userId, commentId }
+        })
+    }
+
+    const likeCount = await prisma.commentLike.count({
+        where: { commentId }
+    })
+
+    revalidatePath("/")
+    revalidatePath("/profile/me")
+
+    return {
+        isLiked: !existingLike,
+        likeCount
+    }
+}
+
 export async function getPostComments(postId: string) {
-    return await prisma.comment.findMany({
+    const session = await getServerSession(authOptions)
+    const currentUserId = session?.user?.id ?? null
+
+    const comments = await prisma.comment.findMany({
         where: { postId },
         include: {
-            user: { select: { id: true, name: true, image: true } }
+            user: { select: { id: true, name: true, image: true } },
+            likes: {
+                select: { userId: true }
+            }
         },
         orderBy: { createdAt: 'asc' }
     })
+
+    return comments.map((comment) => ({
+        ...comment,
+        likeCount: comment.likes.length,
+        isLiked: currentUserId ? comment.likes.some((like) => like.userId === currentUserId) : false,
+    }))
 }
 
 // Booking Actions (Skeleton)

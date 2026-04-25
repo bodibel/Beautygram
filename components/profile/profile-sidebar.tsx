@@ -1,6 +1,6 @@
 "use client"
 
-import { Clock, Mail, MapPin, Phone } from "lucide-react"
+import { Clock, Eye, Mail, MapPin, Phone, Star } from "lucide-react"
 
 interface ProfileSidebarProps {
     salon: any
@@ -18,12 +18,34 @@ const DAY_LABELS: Record<string, string> = {
 
 export function ProfileSidebar({ salon }: ProfileSidebarProps) {
     const openingHours = Array.isArray(salon.openingHours) ? salon.openingHours : []
+    const profileViewCount = Number(salon.profileViewCount) || 0
+    const reviewCount = Number(salon.reviewCount) || 0
 
     const showPhone = salon.showPhoneOnProfile !== false && salon.phone
     const showEmail = salon.showEmailOnProfile === true && salon.email
 
     return (
         <div className="space-y-6">
+            <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center gap-2">
+                    <Eye className="h-5 w-5 text-primary" />
+                    <h3 className="font-bold text-gray-900">Láthatóság</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl bg-gray-50 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Megtekintések</p>
+                        <p className="mt-2 text-2xl font-bold text-gray-900">{profileViewCount}</p>
+                    </div>
+                    <div className="rounded-2xl bg-gray-50 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Értékelések</p>
+                        <div className="mt-2 flex items-center gap-2">
+                            <p className="text-2xl font-bold text-gray-900">{reviewCount}</p>
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {(showPhone || showEmail) && (
                 <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
                     <div className="flex items-center gap-2 mb-4">

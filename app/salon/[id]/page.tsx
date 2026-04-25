@@ -6,6 +6,7 @@ import { CommandHeader } from "@/components/dashboard/command-header"
 import { KpiCards } from "@/components/dashboard/kpi-cards"
 import { TimelineSchedule } from "@/components/dashboard/timeline-schedule"
 import { PortfolioVibeWidget } from "@/components/dashboard/portfolio-vibe-widget"
+import { VisitorTrendCard } from "@/components/dashboard/visitor-trend-card"
 import { useAuth } from "@/lib/auth-context"
 import { useSalonData } from "@/hooks/useSalonData"
 import { acceptBookingRequest, getSalonBookingRequests, rejectBookingRequest } from "@/lib/actions/salon"
@@ -40,7 +41,7 @@ export default function SalonOverviewPage({ params }: { params: Promise<{ id: st
     const [requestsLoading, setRequestsLoading] = useState(true)
     const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null)
 
-    const { salon, services, posts, loading } = useSalonData(id, userData?.id)
+    const { salon, services, posts, visitorStats, loading } = useSalonData(id, userData?.id)
 
     useEffect(() => {
         const loadBookingRequests = async () => {
@@ -143,8 +144,14 @@ export default function SalonOverviewPage({ params }: { params: Promise<{ id: st
                     pendingRequests={dashboardStats.pendingRequests}
                     servicesCount={services.length}
                     postsCount={posts.length}
-                    portfolioImageCount={dashboardStats.portfolioImages.length}
-                    totalInteractions={dashboardStats.totalInteractions}
+                    totalViews={visitorStats.totalViews}
+                    todayViews={visitorStats.todayViews}
+                />
+
+                <VisitorTrendCard
+                    totalViews={visitorStats.totalViews}
+                    todayViews={visitorStats.todayViews}
+                    series={visitorStats.series}
                 />
 
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">

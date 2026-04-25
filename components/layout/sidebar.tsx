@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useParams, useRouter } from "next/navigation"
@@ -10,9 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AuthModal } from "@/components/auth/auth-modal"
 import { FilterModal } from "@/components/layout/filter-modal"
-import { FilterPanel } from "@/components/layout/filter-panel"
 import { getSalonLinks } from "@/lib/navigation-config"
-import { adminLinks, authLinks, loggedInVisitorLinks } from "@/lib/navigation-config"
+import { adminLinks, authLinks, loggedInVisitorLinks, providerLinks } from "@/lib/navigation-config"
 import { useAuth } from "@/lib/auth-context"
 import { useFilter } from "@/lib/filter-context"
 import { useNotifications } from "@/lib/notification-context"
@@ -21,6 +21,11 @@ import { FavoriteButton } from "@/components/salon/FavoriteButton"
 import { signOut } from "next-auth/react"
 import { getSalonName } from "@/lib/actions/salon"
 import { normalizeImageSrc } from "@/lib/image-utils"
+
+const FilterPanel = dynamic(
+  () => import("@/components/layout/filter-panel").then((mod) => mod.FilterPanel),
+  { ssr: false }
+)
 
 const CATEGORY_LABELS: Record<string, string> = {
   nails: "Műköröm",
@@ -54,7 +59,9 @@ export function Sidebar() {
   const isOnDashboard = pathname?.startsWith("/dashboard")
   const isOnProfilePage = pathname?.startsWith("/profile/")
   const isAccountContext = pathname === "/profile/me" || pathname?.startsWith("/account/")
-  const accountLinks = [...loggedInVisitorLinks, ...authLinks]
+  const accountLinks = userData?.role === "provider"
+    ? [...providerLinks, ...authLinks]
+    : [...loggedInVisitorLinks, ...authLinks]
 
   // Nav links per context
   const navLinks = isSalonContext && salonId

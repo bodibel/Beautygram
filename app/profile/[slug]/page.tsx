@@ -7,8 +7,8 @@ import { ProfileTabs } from "@/components/profile/profile-tabs"
 import { ProfileSidebar } from "@/components/profile/profile-sidebar"
 import { FeedCard } from "@/components/home/feed-card"
 import { Card, CardContent } from "@/components/ui/card"
-import { getPublicSalonData } from "@/lib/actions/salon"
-import { Star, X, Maximize2, Plus, ImagePlus, MapPin, MessageCircle } from "lucide-react"
+import { getPublicSalonData, trackPublicSalonView } from "@/lib/actions/salon"
+import { Star, X, Maximize2, Plus, ImagePlus, MapPin, MessageCircle, Eye } from "lucide-react"
 import { MessageModal } from "@/components/salon/message-modal"
 import { useAuth } from "@/lib/auth-context"
 import { PostModal } from "@/components/salon/modals/PostModal"
@@ -102,6 +102,41 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
         loadSalonData()
     }, [slug])
 
+    useEffect(() => {
+        if (!salon?.id) return
+
+        const todayKey = new Date().toISOString().slice(0, 10)
+        const storageKey = `salon-view:${salon.id}:${todayKey}`
+
+        if (typeof window === "undefined" || window.sessionStorage.getItem(storageKey)) {
+            return
+        }
+
+        window.sessionStorage.setItem(storageKey, "pending")
+
+        trackPublicSalonView(salon.id)
+            .then((result) => {
+                if (!result?.tracked) {
+                    window.sessionStorage.setItem(storageKey, "skipped")
+                    return
+                }
+
+                window.sessionStorage.setItem(storageKey, "tracked")
+                setSalon((current: any) =>
+                    current
+                        ? {
+                            ...current,
+                            profileViewCount: result.totalViews,
+                        }
+                        : current
+                )
+            })
+            .catch((error) => {
+                console.error("Error tracking salon view:", error)
+                window.sessionStorage.removeItem(storageKey)
+            })
+    }, [salon?.id])
+
     const loadSalonData = async () => {
         try {
             setLoading(true)
@@ -183,6 +218,7 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
     const coverImage = normalizeImageSrc(salon.coverImage) || normalizedSalonImages[0] || "https://images.unsplash.com/photo-1521590832896-7bbc16635175?w=1200&q=80"
     const avatar = normalizeImageSrc(salon.profileImage) || normalizedSalonImages[0] || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80"
     const isOwner = userData?.id === salon?.ownerId
+    const profileViewCount = Number(salon.profileViewCount) || 0
 
     return (
         <MainLayout showRightSidebar={false} fullWidth>
@@ -215,6 +251,10 @@ export default function ProfilePage({ params }: { params: Promise<{ slug: string
                                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                                     <span className="font-semibold">{salonRating.toFixed(1)}</span>
                                     <span className="text-muted-foreground">({salonReviewCount})</span>
+                                </div>
+                                <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <Eye className="h-3.5 w-3.5" />
+                                    <span>{profileViewCount} profilmegtekintés</span>
                                 </div>
                                 <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                                     <MapPin className="h-3.5 w-3.5" />

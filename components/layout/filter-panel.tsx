@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import { useLoadScript } from "@react-google-maps/api"
 import usePlacesAutocompleteNew from "@/lib/hooks/usePlacesAutocompleteNew"
 import { getGeocode, getLatLng } from "use-places-autocomplete"
+import { toast } from "sonner"
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Scissors, Sparkles, Hand, User, Palette, Waves, Smile,
@@ -54,6 +55,7 @@ export function FilterPanel({ onApply, compact = false }: FilterPanelProps) {
 
   const [isCountryOpen, setIsCountryOpen] = useState(false)
   const [categories, setCategories] = useState<any[]>([])
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false)
 
   useEffect(() => {
     getCategories().then(setCategories)
@@ -104,6 +106,90 @@ export function FilterPanel({ onApply, compact = false }: FilterPanelProps) {
     } catch (e) {
       console.error("Geocoding error:", e)
     }
+  }
+
+  const handleUseCurrentLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      toast.error("A helymeghatározás nem támogatott ezen az eszközön.")
+      return
+    }
+
+    setIsDetectingLocation(true)
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude
+        const lng = position.coords.longitude
+
+        try {
+          const maps = typeof window !== "undefined" ? window.google?.maps : undefined
+
+          if (!maps?.Geocoder) {
+            updateLocation({ lat, lng })
+            toast.success("A koordinátáid frissültek.")
+            return
+          }
+
+          const geocoder = new maps.Geocoder()
+          const geocoderResult = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
+            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+              if (status === "OK" && results) {
+                resolve(results)
+                return
+              }
+
+              reject(new Error(status))
+            })
+          })
+
+          const addressComponents = geocoderResult[0]?.address_components ?? []
+          const cityComponent = addressComponents.find((component) =>
+            component.types.includes("locality") ||
+            component.types.includes("postal_town") ||
+            component.types.includes("administrative_area_level_2")
+          )
+          const countryComponent = addressComponents.find((component) =>
+            component.types.includes("country")
+          )
+
+          const matchedCountry = countryComponent
+            ? EU_COUNTRIES.find((country) => country.code === countryComponent.short_name)
+            : undefined
+
+          updateLocation({
+            city: cityComponent?.long_name || location.city,
+            country: matchedCountry?.name || countryComponent?.long_name || location.country,
+            lat,
+            lng,
+          })
+
+          clearSuggestions()
+          toast.success("A szűrő frissült az aktuális helyed alapján.")
+        } catch (error) {
+          console.error("Reverse geocoding error:", error)
+          updateLocation({ lat, lng })
+          toast.error("A helyedet érzékeltük, de a várost nem sikerült beazonosítani.")
+        } finally {
+          setIsDetectingLocation(false)
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error)
+        setIsDetectingLocation(false)
+
+        if (error.code === error.PERMISSION_DENIED) {
+          toast.error("A helymeghatározási engedély meg lett tagadva.")
+          return
+        }
+
+        toast.error("Nem sikerült lekérni a jelenlegi helyedet.")
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000,
+      }
+    )
   }
 
   const labelCls = compact ? "text-xs font-semibold" : "text-sm font-semibold"
@@ -185,9 +271,17 @@ export function FilterPanel({ onApply, compact = false }: FilterPanelProps) {
               onChange={(e) => setValue(e.target.value)}
               placeholder="Város keresése..."
               disabled={!ready}
-              className={cn("pr-8", inputH)}
+              className={cn("pr-10", inputH)}
             />
-            <MapPin className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <button
+              type="button"
+              onClick={handleUseCurrentLocation}
+              disabled={isDetectingLocation || !isLoaded}
+              aria-label="Jelenlegi helyem használata"
+              className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary-subtle hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <MapPin className="h-3.5 w-3.5" />
+            </button>
           </div>
           {status === "OK" && (
             <div className="absolute top-full left-0 w-full bg-surface border border-border rounded-lg shadow-lg z-50 mt-1 max-h-40 overflow-y-auto">

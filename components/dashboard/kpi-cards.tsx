@@ -1,14 +1,14 @@
 "use client"
 
-import { Calendar, Briefcase, Images, MessageCircleMore } from "lucide-react"
+import { Briefcase, Calendar, Eye } from "lucide-react"
 
 type KpiCardsProps = {
     bookingsToday: number
     pendingRequests: number
     servicesCount: number
     postsCount: number
-    portfolioImageCount: number
-    totalInteractions: number
+    totalViews: number
+    todayViews: number
 }
 
 function MiniMeter({ value, max }: { value: number; max: number }) {
@@ -33,8 +33,8 @@ export function KpiCards({
     pendingRequests,
     servicesCount,
     postsCount,
-    portfolioImageCount,
-    totalInteractions,
+    totalViews,
+    todayViews,
 }: KpiCardsProps) {
     return (
         <div className="grid gap-6 md:grid-cols-3">
@@ -80,20 +80,21 @@ export function KpiCards({
 
             <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-100/50 transition-all hover:shadow-md">
                 <div className="mb-4 flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Portfólió aktivitás</span>
-                    <div className="rounded-xl bg-rose-50 p-2 text-rose-500">
-                        <Images className="h-5 w-5" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Profil látogatók</span>
+                    <div className="rounded-xl bg-sky-50 p-2 text-sky-600">
+                        <Eye className="h-5 w-5" />
                     </div>
                 </div>
                 <div className="flex flex-wrap items-baseline gap-2">
-                    <h3 className="text-3xl font-bold text-gray-900 sm:text-4xl">{portfolioImageCount}</h3>
-                    <span className="text-sm font-medium text-gray-500">kép a portfólióban</span>
+                    <h3 className="text-3xl font-bold text-gray-900 sm:text-4xl">{totalViews}</h3>
+                    <span className="text-sm font-medium text-gray-500">összes megtekintés</span>
                 </div>
-                <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
-                    <MessageCircleMore className="h-4 w-4 text-primary" />
-                    <span>{totalInteractions} összes interakció a bejegyzéseken</span>
-                </div>
-                <MiniMeter value={totalInteractions} max={Math.max(totalInteractions, portfolioImageCount, 5)} />
+                <p className="mt-2 text-sm text-gray-500">
+                    {todayViews > 0
+                        ? `${todayViews} látogatás érkezett ma a publikus profilodra.`
+                        : "Ma még nem érkezett új profilmegtekintés."}
+                </p>
+                <MiniMeter value={todayViews} max={Math.max(totalViews, todayViews, 5)} />
             </div>
         </div>
     )

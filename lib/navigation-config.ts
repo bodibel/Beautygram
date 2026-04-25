@@ -1,20 +1,20 @@
 import type React from "react"
 import {
-  LayoutGrid,
-  Users,
-  Heart,
-  Briefcase,
-  User,
-  Store,
-  Settings,
-  Calendar,
-  Image as ImageIcon,
-  FileText,
-  Info,
   BarChart3,
-  MessageSquare,
-  Filter,
+  Briefcase,
+  Calendar,
   CreditCard,
+  FileText,
+  Filter,
+  Heart,
+  Image as ImageIcon,
+  Info,
+  LayoutGrid,
+  MessageSquare,
+  Settings,
+  Store,
+  User,
+  Users,
 } from "lucide-react"
 
 export interface NavLink {
@@ -42,9 +42,9 @@ export const loggedInVisitorLinks: NavLink[] = [
 ]
 
 export const providerLinks: NavLink[] = [
-  { href: "/dashboard/salons", label: "Vállalkozásom", icon: Store },
-  { href: "/dashboard/subscription", label: "Előfizetés", icon: CreditCard },
   { href: "/profile/me", label: "Profilom", icon: User },
+  { href: "/dashboard/salons", label: "Vállalkozásom", icon: Store },
+  { href: "/dashboard/subscription", label: "Prémium előfizetés", icon: CreditCard },
 ]
 
 export const adminLinks: NavLink[] = [
@@ -58,6 +58,7 @@ export const adminLinks: NavLink[] = [
 export function getSalonLinks(salonId: string): NavLink[] {
   return [
     { href: `/salon/${salonId}`, label: "Áttekintés", icon: BarChart3 },
+    { href: "/dashboard/subscription", label: "Prémium előfizetés", icon: CreditCard },
     { href: `/salon/${salonId}/messages`, label: "Üzenetek", icon: MessageSquare, badge: "unread-messages" },
     { href: `/salon/${salonId}/posts`, label: "Bejegyzéseim", icon: FileText },
     { href: `/salon/${salonId}/settings`, label: "Adatok", icon: Info },
