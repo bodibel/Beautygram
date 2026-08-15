@@ -604,10 +604,16 @@ export async function createSalon(data: CreateSalonInput) {
 
     try {
         const slug = await generateUniqueSlug(salonName, prisma)
+        // A publikálás a házirenden keresztül dől el. Az 1. fázisban ez mindig
+        // engedélyez, tehát az új szalon azonnal publikált lesz. A létrehozás
+        // maga sosem bukik el a publikálási házirenden.
+        const publishPolicy = await canPublishSalon(data.ownerId ?? sessionUserId)
         const salon = await prisma.salon.create({
             data: {
                 name: salonName,
                 slug,
+                isPublished: publishPolicy.allowed,
+                publishedAt: publishPolicy.allowed ? new Date() : null,
                 country: data.country || "Magyarország",
                 city: data.city || "",
                 district: data.district || null,
