@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
             findFirst: vi.fn(),
         },
         booking: {
+            findFirst: vi.fn(),
             create: vi.fn(),
         },
         message: {
@@ -143,6 +144,11 @@ describe("createBooking és sendMessage láthatósági ellenőrzése", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mocks.requireSession.mockResolvedValue(SESSION_USER_ID)
+        // A createBooking függvény sikeres végrehajtásához szükséges mockingok:
+        // - service.findFirst: a szolgáltatás megkeresése
+        // - booking.findFirst: a meglévő foglalások ellenőrzése
+        mocks.prisma.service.findFirst.mockResolvedValue({ id: "szolgaltatas-1" })
+        mocks.prisma.booking.findFirst.mockResolvedValue(null)
     })
 
     it.each([
@@ -163,7 +169,7 @@ describe("createBooking és sendMessage láthatósági ellenőrzése", () => {
             userId: SESSION_USER_ID,
             salonId: "szalon-1",
             serviceId: "szolgaltatas-1",
-        })).rejects.toThrow()
+        })).rejects.toThrow("Ez a szalon jelenleg nem érhető el.")
 
         expect(mocks.prisma.booking.create).not.toHaveBeenCalled()
     })
