@@ -7,6 +7,7 @@ import { existsSync } from "fs"
 import { join } from "path"
 import prisma from "@/lib/db"
 import { AUDIT_ACTIONS, getAuditActionContext, writeAuditLog } from "@/lib/audit-log"
+import { canPublishSalon } from "@/lib/salon-publishing"
 import { generateUniqueSlug } from "@/lib/slug"
 import { PUBLIC_SALON_WHERE, isSalonPubliclyVisible } from "@/lib/salon-visibility"
 import { requireSession } from "@/lib/auth-utils"
@@ -389,6 +390,93 @@ export async function updateSalon(salonId: string, data: UpdateSalonInput) {
         throw error;
     }
 }
+
+/**
+ * Publikálja a szalont, ha a házirend engedi és nincs rendszerszintű tiltás.
+ * A publishedAt az ELSŐ publikálás időpontja marad, újrapublikálás nem írja felül.
+ */
+export async function publishSalon(salonId: string) {
+    const ownerId = await requireSalonOwner(salonId)
+
+    const salon = await prisma.salon.findUnique({
+        where: { id: salonId },
+        select: { publishedAt: true, publishBlockedReason: true },
+    })
+    if (!salon) throw new Error("A szalon nem található.")
+
+    if (salon.publishBlockedReason) {
+        const reason = salon.publishBlockedReason === "BILLING"
+            ? "A szalon publikálása előfizetési okból le van tiltva."
+            : "A szalon publikálása adminisztrátori döntés miatt le van tiltva."
+
+        await writeAuditLog({
+            action: AUDIT_ACTIONS.SALON_PUBLISH_BLOCKED,
+            userId: ownerId,
+            entity: "Salon",
+            entityId: salonId,
+            metadata: { blockedReason: salon.publishBlockedReason },
+            ...(await getAuditActionContext()),
+        })
+        return { success: false, error: reason }
+    }
+
+    const policy = await canPublishSalon(ownerId, salonId)
+    if (!policy.allowed) {
+        await writeAuditLog({
+            action: AUDIT_ACTIONS.SALON_PUBLISH_BLOCKED,
+            userId: ownerId,
+            entity: "Salon",
+            entityId: salonId,
+            metadata: { policyReason: policy.reason ?? null },
+            ...(await getAuditActionContext()),
+        })
+        return { success: false, error: policy.reason ?? "A szalon jelenleg nem publikálható." }
+    }
+
+    await prisma.salon.update({
+        where: { id: salonId },
+        data: salon.publishedAt
+            ? { isPublished: true }
+            : { isPublished: true, publishedAt: new Date() },
+    })
+
+    await writeAuditLog({
+        action: AUDIT_ACTIONS.SALON_PUBLISH,
+        userId: ownerId,
+        entity: "Salon",
+        entityId: salonId,
+        ...(await getAuditActionContext()),
+    })
+
+    revalidatePath("/dashboard/salons")
+    return { success: true }
+}
+
+/**
+ * Levonja a szalont a publikus felületről.
+ * A publishedAt szándékosan megmarad: az első publikálás időpontja később
+ * a statisztikákhoz és a türelmi idő számításához kell.
+ */
+export async function unpublishSalon(salonId: string) {
+    const ownerId = await requireSalonOwner(salonId)
+
+    await prisma.salon.update({
+        where: { id: salonId },
+        data: { isPublished: false },
+    })
+
+    await writeAuditLog({
+        action: AUDIT_ACTIONS.SALON_UNPUBLISH,
+        userId: ownerId,
+        entity: "Salon",
+        entityId: salonId,
+        ...(await getAuditActionContext()),
+    })
+
+    revalidatePath("/dashboard/salons")
+    return { success: true }
+}
+
 export async function getUserSalons(userId: string) {
     const sessionUserId = await requireSelf(userId)
     try {
