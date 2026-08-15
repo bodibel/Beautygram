@@ -563,6 +563,21 @@ describe("publikus szalon-lekérdezések láthatósági szűrése", () => {
 })
 ```
 
+**A fenti teszt önmagában nem elég** — csak a szűretlen hívásokat fedi le, és nem kapná el a `getRecentPosts` felülírási hibáját. Vedd fel ezeket az eseteket is:
+
+- `getRecentPosts` szűrő nélkül, kategória-szűrővel, és hely-szűrővel (lat/lng/radius) — mindhárom esetben a `where.salon` tartalmazza mindhárom láthatósági feltételt. A kategória-szűrős eset az, ami a felülírási hibát elkapja.
+- `createBooking` nem látható szalonra hibát dob (`publishBlockedReason: "BILLING"` és `isPublished: false` esetekre).
+- `sendMessage` nem látható szalonra hibát dob és nem hoz létre üzenetet; `salonId` nélkül viszont változatlanul működik.
+
+**Teszt-higiéniai buktató a `createBooking` eseteknél:** a `createBooking` a láthatósági guard után még meghívja a `prisma.service.findFirst` és a `prisma.booking.findFirst` metódusokat. Ha ezeket nem mockolod be, a teszt akkor is átmegy, ha a guardot kivennéd — mert a végrehajtás egy későbbi lépésen bukna el. A mockokat tehát úgy állítsd be, hogy a guard nélkül a hívás eljutna a `booking.create`-ig:
+
+```ts
+        mocks.prisma.service.findFirst.mockResolvedValue({ id: "szolgaltatas-1" })
+        mocks.prisma.booking.findFirst.mockResolvedValue(null)
+```
+
+és az assertet pontosítsd a konkrét üzenetre: `.rejects.toThrow("Ez a szalon jelenleg nem érhető el.")`.
+
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/salon/salon-public-queries.test.ts`
@@ -641,6 +656,24 @@ A `getRecentPosts`-ban a poszt-szűrő mellé a szalon láthatóságát is érv�
 ```ts
     // A nem publikált szalonok posztjai nem jelenhetnek meg a publikus feedben.
     where.salon = { ...PUBLIC_SALON_WHERE }
+```
+
+**Figyelem — ez önmagában nem elég.** A függvényben lejjebb van egy ág, amely a hely- és kategória-szűrőket alkalmazza, és a `where.salon`-t **felülírja**, nem kiegészíti:
+
+```ts
+            if (Object.keys(salonConditions).length > 0) {
+                where.salon = salonConditions
+            }
+```
+
+Ez a nyitóoldal hétköznapi útvonala (a látogató helyre vagy kategóriára szűr), tehát a felülírás élesen kihasználható rés lenne. Cseréld ezt a blokkot összefésülésre:
+
+```ts
+            if (Object.keys(salonConditions).length > 0) {
+                // Összefésülés, NEM felülírás: a láthatósági feltételeknek a szűrt
+                // lekérdezéseknél is érvényben kell maradniuk.
+                where.salon = { ...PUBLIC_SALON_WHERE, ...salonConditions }
+            }
 ```
 
 - [ ] **Step 6: A foglalási guard átállítása**
