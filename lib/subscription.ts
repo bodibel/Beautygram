@@ -276,9 +276,9 @@ export async function isPremium(salonId: string): Promise<boolean> {
 // ─── Free lejárat kezelés ─────────────────────────────────────────────────────
 
 /**
- * Lejárt FREE szalonok inaktiválása.
+ * Lejárt FREE szalonok publikálásának letiltása.
  * Ezt a cron job hívja naponta.
- * Visszaadja az inaktivált szalonok számát.
+ * Visszaadja a publikálásban letiltott szalonok számát.
  */
 export async function expireFreeSalons(): Promise<number> {
   const config = await getSubscriptionConfig()

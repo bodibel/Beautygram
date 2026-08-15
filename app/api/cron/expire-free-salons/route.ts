@@ -1,5 +1,5 @@
 /**
- * Cron endpoint: lejárt FREE szalonok inaktiválása
+ * Cron endpoint: lejárt FREE szalonok publikálásának letiltása
  *
  * Hívás: GET /api/cron/expire-free-salons
  * Header: Authorization: Bearer <CRON_SECRET>
@@ -28,10 +28,10 @@ export async function GET(req: NextRequest) {
 
   try {
     const count = await expireFreeSalons()
-    console.log(`[cron] expire-free-salons: ${count} szalon inaktiválva`)
+    console.log(`[cron] expire-free-salons: ${count} szalon publikálása letiltva`)
     return NextResponse.json({
       success: true,
-      inactivated: count,
+      blocked: count,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
