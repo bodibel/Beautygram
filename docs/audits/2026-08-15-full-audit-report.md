@@ -205,6 +205,25 @@ Ez azt jelentette, hogy a Git-en lévő verzió egy lényegesen régebbi állapo
 
 ---
 
+## 7.1 Függőségi sebezhetőségek
+
+Az audit során az `npm audit` 1 kritikus és 14 magas súlyosságú bejegyzést mutatott (a 2026-05-29-i állapot 0 kritikus és 7 magas volt). Kettő közvetlenül ezt az alkalmazást érintette:
+
+| Csomag | Súlyosság | Probléma | Miért számít itt |
+| --- | --- | --- | --- |
+| `next-auth` 4.24.13 | kritikus | Az email-normalizáló a Unicode-feldolgozás **előtt** validálja a címet | Fiókátvételi kockázat email-alapú bejelentkezésnél |
+| `next` 16.2.6 | magas | Middleware / Proxy bypass App Routerben | Pontosan azt a `proxy.ts` réteget kerüli meg, amin az útvonalvédelem áll |
+
+**Javítás:** `next` → 16.3.1, `next-auth` → 4.24.15. Mindkettő nem-major frissítés, a meglévő semver tartományon belül.
+
+Frissítés utáni állapot: **kritikus 0**, magas 11, összesen 13. A `next` és a `next-auth` tiszta.
+
+A `next` proxy-bypass hibája jól illusztrálja, miért fontos a többrétegű védelem: ha csak a `proxy.ts` védte volna az admin szekciót, ez a hiba kinyitotta volna. A mostani javítás során hozzáadott admin layout guard és a meglévő szerver action guardok mögötte is fognak.
+
+Ellenőrzés a frissítés után: typecheck és lint tiszta, 75/75 teszt zöld, build sikeres (a `ƒ Proxy (Middleware)` továbbra is regisztrálva), auth smoke teszt rendben (bejelentkezés 200 session tokennel, hibás jelszó 401, védett útvonal kijelentkezve 307, cron auth nélkül 401).
+
+---
+
 ## 8. Dokumentáció
 
 **Kiindulás:** a `README.md` a `create-next-app` alapértelmezett sablonja volt, rossz portszámmal (3000 a valós 3020 helyett), setup, adatbázis-indítás, seed és környezeti változók leírása nélkül. A repó gyökerében 29 darab `GLOWYSPOT_*.md` fájl hevert rendezetlenül.
@@ -241,7 +260,7 @@ Az alábbiak nem képezték a mostani javítás részét:
 | Terület | Megjegyzés | Javasolt prioritás |
 | --- | --- | --- |
 | Bejelentkezési rate limit | A sikertelen bejelentkezés már naplózott, de nincs kísérletszám-korlátozás. A napló alapján ez most már megvalósítható. | P1 |
-| Függőségi sebezhetőségek | A `npm audit` továbbra is jelez `prisma`, `next-auth` és tranzitív csomagoknál. Lásd `GLOWYSPOT_REMAINING_SECURITY_RISK_NOTE.md`. | P1 |
+| Maradék függőségi sebezhetőségek | 11 magas és 2 egyéb, mind tranzitív (`prisma`/`@prisma/config`/`effect`, `sharp`→libvips, `vite`, glob-csomagok). A `sharp` javítása major verzióugrás, külön tesztelést igényel. Lásd `GLOWYSPOT_REMAINING_SECURITY_RISK_NOTE.md`. | P1 |
 | Upload rate limit | Folyamat-lokális, több példány esetén nem közös. | P2 |
 | Eseménynapló megőrzési ideje | Nincs archiválási vagy törlési szabály; a tábla korlátlanul nő. | P2 |
 | `CommentLike` funkció | A tábla és a modell létezik, de a kód nem használja. | P3 |
