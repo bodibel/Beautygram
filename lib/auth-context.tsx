@@ -1,9 +1,16 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext } from "react"
 import { useSession, SessionProvider } from "next-auth/react"
+import type { DefaultSession } from "next-auth"
 
 type UserRole = "visitor" | "provider" | "admin"
+type SessionUser = NonNullable<DefaultSession["user"]>
+
+interface AuthUser extends SessionUser {
+    id: string
+    role?: UserRole
+}
 
 interface UserData {
     id: string
@@ -14,7 +21,7 @@ interface UserData {
 }
 
 interface AuthContextType {
-    user: any | null
+    user: AuthUser | null
     userData: UserData | null
     loading: boolean
 }
@@ -27,27 +34,21 @@ const AuthContext = createContext<AuthContextType>({
 
 function AuthInternalProvider({ children }: { children: React.ReactNode }) {
     const { data: session, status } = useSession()
-    const [userData, setUserData] = useState<UserData | null>(null)
     const loading = status === "loading"
+    const user = (session?.user as AuthUser | undefined) ?? null
 
-    useEffect(() => {
-        if (session?.user) {
-            // In a real app, you might fetch extra user data from an API
-            // For now, we'll map the session user
-            setUserData({
-                id: (session.user as any).id,
-                email: session.user.email || "",
-                role: (session.user as any).role || "visitor",
-                name: session.user.name || undefined,
-                image: session.user.image || undefined
-            })
-        } else {
-            setUserData(null)
+    const userData: UserData | null = user
+        ? {
+            id: user.id,
+            email: user.email || "",
+            role: user.role || "visitor",
+            name: user.name || undefined,
+            image: user.image || undefined,
         }
-    }, [session])
+        : null
 
     return (
-        <AuthContext.Provider value={{ user: session?.user ?? null, userData, loading }}>
+        <AuthContext.Provider value={{ user, userData, loading }}>
             {children}
         </AuthContext.Provider>
     )
@@ -64,4 +65,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useAuth = () => useContext(AuthContext)
-

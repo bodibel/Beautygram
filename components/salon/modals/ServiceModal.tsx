@@ -22,17 +22,20 @@ export function ServiceModal({ isOpen, onClose, onSave, service, currency }: Ser
     const [description, setDescription] = useState("")
 
     useEffect(() => {
-        if (service) {
-            setName(service.name)
-            setPrice(service.price)
-            setDuration(service.duration)
-            setDescription(service.description || "")
-        } else {
-            setName("")
-            setPrice("")
-            setDuration("")
-            setDescription("")
-        }
+        const timer = window.setTimeout(() => {
+            if (service) {
+                setName(service.name)
+                setPrice(service.price)
+                setDuration(service.duration)
+                setDescription(service.description || "")
+            } else {
+                setName("")
+                setPrice("")
+                setDuration("")
+                setDescription("")
+            }
+        }, 0)
+        return () => window.clearTimeout(timer)
     }, [service, isOpen])
 
     const getCurrencySymbol = () => {

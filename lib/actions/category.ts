@@ -2,17 +2,16 @@
 
 import prisma from "@/lib/db"
 import { revalidatePath } from "next/cache"
-import { requireSession } from "@/lib/auth-utils"
+import { AUDIT_ACTIONS, getAuditActionContext, writeAuditLog } from "@/lib/audit-log"
+import { requireAdminSession } from "@/lib/auth-utils"
+
+function getErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback
+}
 
 async function requireAdmin() {
-    const userId = await requireSession()
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { role: true }
-    })
-    if (user?.role !== "admin") {
-        throw new Error("Unauthorized")
-    }
+    const admin = await requireAdminSession()
+    return admin.id
 }
 
 export async function getCategories(all?: boolean) {
@@ -29,7 +28,7 @@ export async function getCategories(all?: boolean) {
 }
 
 export async function createCategory(data: { name: string; slug: string; icon?: string; order?: number }) {
-    await requireAdmin()
+    const adminId = await requireAdmin()
     try {
         const category = await prisma.category.create({
             data: {
@@ -40,45 +39,69 @@ export async function createCategory(data: { name: string; slug: string; icon?: 
                 isActive: true
             }
         })
+        await writeAuditLog({
+            action: AUDIT_ACTIONS.ADMIN_CATEGORY_CREATE,
+            userId: adminId,
+            entity: "Category",
+            entityId: category.id,
+            metadata: { name: category.name, slug: category.slug },
+            ...(await getAuditActionContext()),
+        })
         revalidatePath("/")
         revalidatePath("/dashboard/admin/settings")
         return { success: true, category }
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error creating category:", error)
-        return { success: false, error: error.message || "Failed to create category" }
+        return { success: false, error: getErrorMessage(error, "Failed to create category") }
     }
 }
 
 export async function updateCategory(id: string, data: { name?: string; slug?: string; icon?: string; order?: number; isActive?: boolean }) {
-    await requireAdmin()
+    const adminId = await requireAdmin()
     try {
         const category = await prisma.category.update({
             where: { id },
             data
         })
+        await writeAuditLog({
+            action: AUDIT_ACTIONS.ADMIN_CATEGORY_UPDATE,
+            userId: adminId,
+            entity: "Category",
+            entityId: category.id,
+            metadata: { changedFields: Object.keys(data) },
+            ...(await getAuditActionContext()),
+        })
         revalidatePath("/")
         revalidatePath("/dashboard/admin/settings")
         return { success: true, category }
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error updating category:", error)
-        return { success: false, error: error.message || "Failed to update category" }
+        return { success: false, error: getErrorMessage(error, "Failed to update category") }
     }
 }
 
 export async function deleteCategory(id: string) {
-    await requireAdmin()
+    const adminId = await requireAdmin()
     try {
-        // We could either delete or just inactivate. 
+        // We could either delete or just inactivate.
         // Let's check if it's used first? Usually it's safer to just inactivate.
         const category = await prisma.category.update({
             where: { id },
             data: { isActive: false }
         })
+        await writeAuditLog({
+            action: AUDIT_ACTIONS.ADMIN_CATEGORY_DELETE,
+            userId: adminId,
+            entity: "Category",
+            entityId: category.id,
+            metadata: { name: category.name, slug: category.slug },
+            ...(await getAuditActionContext()),
+        })
         revalidatePath("/")
         revalidatePath("/dashboard/admin/settings")
         return { success: true, category }
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error deleting category:", error)
-        return { success: false, error: error.message || "Failed to delete category" }
+        return { success: false, error: getErrorMessage(error, "Failed to delete category") }
     }
 }

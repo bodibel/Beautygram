@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-    const { id } = await params
+    await params
 
     // TODO: Fetch salon data from Firebase to get actual name
     return {

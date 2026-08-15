@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,11 +21,7 @@ import {
     BadgeCheck,
     ChevronDown,
     ChevronUp,
-    Shield,
-    ShieldOff,
     Store,
-    X,
-    Check,
     UserCog,
     Power,
     PowerOff
@@ -47,6 +43,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import Image from "next/image"
 
 interface UserManagerProps {
     filterRole?: string;
@@ -54,17 +51,32 @@ interface UserManagerProps {
     description: string;
 }
 
+type ManagedSalon = {
+    id: string
+    name: string
+}
+
+type ManagedUser = {
+    id: string
+    name: string | null
+    email: string | null
+    image?: string | null
+    role: "admin" | "provider" | "visitor" | string
+    isActive: boolean
+    salons?: ManagedSalon[]
+}
+
 export function UserManager({ filterRole, title, description }: UserManagerProps) {
-    const [users, setUsers] = useState<any[]>([])
+    const [users, setUsers] = useState<ManagedUser[]>([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
     const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-    const [selectedUser, setSelectedUser] = useState<any>(null)
+    const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null)
     const [editData, setEditData] = useState({ name: "", email: "", role: "" })
     const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-    const loadUsers = async () => {
+    const loadUsers = useCallback(async () => {
         setLoading(true)
         const result = await getAllUsers()
         if (result.success) {
@@ -73,11 +85,12 @@ export function UserManager({ filterRole, title, description }: UserManagerProps
             toast.error(result.error || "Hiba a felhasználók betöltésekor")
         }
         setLoading(false)
-    }
+    }, [])
 
     useEffect(() => {
-        loadUsers()
-    }, [])
+        const timer = window.setTimeout(() => void loadUsers(), 0)
+        return () => window.clearTimeout(timer)
+    }, [loadUsers])
 
     const filteredUsers = users.filter(user => {
         const matchesRole = !filterRole || user.role === filterRole
@@ -91,7 +104,7 @@ export function UserManager({ filterRole, title, description }: UserManagerProps
         setExpandedUserId(expandedUserId === userId ? null : userId)
     }
 
-    const handleEdit = (user: any) => {
+    const handleEdit = (user: ManagedUser) => {
         setSelectedUser(user)
         setEditData({
             name: user.name || "",
@@ -226,7 +239,7 @@ export function UserManager({ filterRole, title, description }: UserManagerProps
                                             <div className="flex items-center gap-4 min-w-0">
                                                 <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-lg overflow-hidden shrink-0 ${user.isActive ? "bg-primary/10 text-primary" : "bg-gray-200 text-gray-400"}`}>
                                                     {user.image ? (
-                                                        <img src={user.image} alt={user.name || ""} className="h-full w-full object-cover" />
+                                                        <Image src={user.image} alt={user.name || ""} fill sizes="40px" className="h-full w-full object-cover" />
                                                     ) : (
                                                         user.name?.charAt(0)?.toUpperCase() || <UserIcon size={20} />
                                                     )}
@@ -280,13 +293,13 @@ export function UserManager({ filterRole, title, description }: UserManagerProps
                                                                 <Power className="h-4 w-4 text-muted-foreground shrink-0" />
                                                                 <span className="font-medium">Státusz:</span> {getStatusBadge(user.isActive)}
                                                             </div>
-                                                            {user.salons?.length > 0 && (
+                                                            {(user.salons?.length || 0) > 0 && (
                                                                 <div className="flex items-start gap-2">
                                                                     <Store className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                                                                     <div>
-                                                                        <span className="font-medium">Szalonok ({user.salons.length}):</span>
+                                                                        <span className="font-medium">Szalonok ({user.salons?.length || 0}):</span>
                                                                         <ul className="mt-1 space-y-0.5">
-                                                                            {user.salons.map((salon: any) => (
+                                                                            {user.salons?.map((salon) => (
                                                                                 <li key={salon.id} className="text-muted-foreground">• {salon.name}</li>
                                                                             ))}
                                                                         </ul>
@@ -347,7 +360,7 @@ export function UserManager({ filterRole, title, description }: UserManagerProps
                                                                 <Button
                                                                     variant="outline"
                                                                     className="w-full justify-start gap-2 text-red-600 border-red-200 hover:bg-red-50"
-                                                                    onClick={() => handleDelete(user.id, user.name)}
+                                                                    onClick={() => handleDelete(user.id, user.name || "")}
                                                                     disabled={isDisabled}
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />

@@ -1,31 +1,48 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { generateSlug } from "@/lib/slug"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ImagePlus, X, Loader2, MapPin } from "lucide-react"
+import { ImagePlus, X, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { createSalon } from "@/lib/actions/salon"
 import { useRouter } from "next/navigation"
 import { SafetyWarningModal } from "@/components/ui/SafetyWarningModal"
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete"
 import { uploadFile } from "@/lib/upload"
+import Image from "next/image"
+
+interface SelectedAddress {
+    address: string
+    city: string
+    district?: string
+    street?: string
+    houseNumber?: string
+    zipCode?: string
+    country?: string
+    lat: number
+    lng: number
+}
 
 interface CreateSalonModalProps {
     isOpen: boolean
     onClose: () => void
 }
 
+function getErrorMessage(error: unknown) {
+    return error instanceof Error ? error.message : "A kép feltöltése nem sikerült."
+}
+
 export function CreateSalonModal({ isOpen, onClose }: CreateSalonModalProps) {
     const router = useRouter()
     const [name, setName] = useState("")
     const [address, setAddress] = useState("")
+    const [selectedAddress, setSelectedAddress] = useState<SelectedAddress | null>(null)
     const [currency, setCurrency] = useState("HUF")
-    const [categories, setCategories] = useState<string[]>([])
     const [profileImage, setProfileImage] = useState<File | null>(null)
     const [profilePreview, setProfilePreview] = useState<string | null>(null)
     const [coverImage, setCoverImage] = useState<File | null>(null)
@@ -70,9 +87,10 @@ export function CreateSalonModal({ isOpen, onClose }: CreateSalonModalProps) {
             if (profileImage) {
                 try {
                     profileImageUrl = await uploadFile(profileImage)
-                } catch (error: any) {
-                    setSafetyError({ message: error.message, preview: profilePreview })
-                    toast.error(error.message, {
+                } catch (error) {
+                    const message = getErrorMessage(error)
+                    setSafetyError({ message, preview: profilePreview })
+                    toast.error(message, {
                         duration: 5000,
                         position: "top-center"
                     })
@@ -82,9 +100,10 @@ export function CreateSalonModal({ isOpen, onClose }: CreateSalonModalProps) {
             if (coverImage) {
                 try {
                     coverImageUrl = await uploadFile(coverImage)
-                } catch (error: any) {
-                    setSafetyError({ message: error.message, preview: coverPreview })
-                    toast.error(error.message, {
+                } catch (error) {
+                    const message = getErrorMessage(error)
+                    setSafetyError({ message, preview: coverPreview })
+                    toast.error(message, {
                         duration: 5000,
                         position: "top-center"
                     })
@@ -94,9 +113,17 @@ export function CreateSalonModal({ isOpen, onClose }: CreateSalonModalProps) {
 
             await createSalon({
                 name,
-                address,
+                address: selectedAddress?.address || address,
+                country: selectedAddress?.country,
+                city: selectedAddress?.city,
+                district: selectedAddress?.district,
+                street: selectedAddress?.street,
+                houseNumber: selectedAddress?.houseNumber,
+                zipCode: selectedAddress?.zipCode,
+                lat: selectedAddress?.lat,
+                lng: selectedAddress?.lng,
                 currency,
-                categoryIds: categories,
+                categoryIds: [],
                 image: profileImageUrl,
                 coverImage: coverImageUrl
             })
@@ -144,7 +171,10 @@ export function CreateSalonModal({ isOpen, onClose }: CreateSalonModalProps) {
                                 <div className="space-y-2">
                                     <Label htmlFor="address">Cím</Label>
                                     <AddressAutocomplete
-                                        onAddressSelect={(val) => setAddress(val.address)}
+                                        onAddressSelect={(val) => {
+                                            setAddress(val.address)
+                                            setSelectedAddress(val)
+                                        }}
                                         defaultValue={address}
                                         placeholder="Szalon címe..."
                                     />
@@ -170,7 +200,7 @@ export function CreateSalonModal({ isOpen, onClose }: CreateSalonModalProps) {
                                     <div className="flex items-center justify-center">
                                         {profilePreview ? (
                                             <div className="relative h-32 w-32 rounded-full overflow-hidden border-2 border-primary/10 group">
-                                                <img src={profilePreview} alt="Profile" className="h-full w-full object-cover" />
+                                                <Image src={profilePreview} alt="Profile" fill sizes="128px" className="h-full w-full object-cover" />
                                                 <button
                                                     type="button"
                                                     onClick={() => { setProfileImage(null); setProfilePreview(null) }}
@@ -194,7 +224,7 @@ export function CreateSalonModal({ isOpen, onClose }: CreateSalonModalProps) {
                                     <div className="flex items-center justify-center">
                                         {coverPreview ? (
                                             <div className="relative h-24 w-full rounded-xl overflow-hidden border-2 border-primary/10 group">
-                                                <img src={coverPreview} alt="Cover" className="h-full w-full object-cover" />
+                                                <Image src={coverPreview} alt="Cover" fill sizes="300px" className="h-full w-full object-cover" />
                                                 <button
                                                     type="button"
                                                     onClick={() => { setCoverImage(null); setCoverPreview(null) }}

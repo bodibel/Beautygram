@@ -1,10 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { Dialog, DialogContent, DialogOverlay, DialogPortal, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { X } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { Button } from "./button"
 
 interface ModalProps {
     isOpen: boolean
@@ -25,11 +23,11 @@ export function Modal({ isOpen, onClose, children, title, size = "md" }: ModalPr
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogPortal>
-                <DialogOverlay className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm" />
-                <DialogContent 
+                <DialogOverlay className="fixed inset-0 z-[100] bg-text-primary/45 backdrop-blur-md" />
+                <DialogContent
                     className={cn(
-                        "fixed left-[50%] top-[50%] z-[101] grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border-none bg-background p-6 shadow-lg duration-200 sm:rounded-2xl",
-                        "max-h-[90vh] overflow-y-auto outline-none",
+                        "fixed left-[50%] top-[50%] z-[101] grid w-[calc(100vw-2rem)] translate-x-[-50%] translate-y-[-50%] gap-0 overflow-hidden border border-border-subtle bg-surface-elevated p-0 shadow-[0_28px_90px_rgba(48,36,30,0.24)] duration-200 sm:rounded-[32px]",
+                        "scrollbar-none max-h-[90vh] overflow-y-auto outline-none",
                         sizeClasses[size]
                     )}
                     onPointerDownOutside={onClose}
@@ -37,19 +35,10 @@ export function Modal({ isOpen, onClose, children, title, size = "md" }: ModalPr
                 >
                     <DialogTitle className="sr-only">{title || "Ablak"}</DialogTitle>
                     <DialogDescription className="sr-only">{title || "Tartalom"}</DialogDescription>
-                    <div className="flex items-center justify-between mb-4 sticky top-0 bg-white pb-2 z-10">
-                        {title && <h2 className="text-xl font-semibold leading-none tracking-tight">{title}</h2>}
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={onClose} 
-                            className="h-8 w-8 ml-auto rounded-full hover:bg-gray-100"
-                        >
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Bezárás</span>
-                        </Button>
+                    <div className="sticky top-0 z-10 border-b border-border-subtle bg-surface-elevated/95 px-6 pb-4 pt-6 backdrop-blur-xl">
+                        {title && <h2 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-text-primary">{title}</h2>}
                     </div>
-                    <div>{children}</div>
+                    <div className="px-6 pb-6 pt-5">{children}</div>
                 </DialogContent>
             </DialogPortal>
         </Dialog>

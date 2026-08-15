@@ -6,9 +6,7 @@ import usePlacesAutocomplete, {
 } from "use-places-autocomplete"
 import {
     Command,
-    CommandDialog,
     CommandEmpty,
-    CommandGroup,
     CommandInput,
     CommandItem,
     CommandList,
@@ -19,8 +17,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-import { Check, ChevronsUpDown, MapPin } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { ChevronsUpDown, MapPin } from "lucide-react"
 import { useState, useEffect } from "react"
 
 interface AddressAutocompleteProps {
@@ -125,10 +122,8 @@ export function AddressAutocomplete({ onAddressSelect, defaultValue = "", placeh
                 })
             }
 
-            const fullAddress = `${street} ${streetNumber}`.trim() || address
-
             onAddressSelect({
-                address: fullAddress,
+                address,
                 city: city,
                 district: district,
                 street: street,

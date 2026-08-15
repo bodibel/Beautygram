@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
 import { Heart, MessageCircle, Share2 } from "lucide-react"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { SafeImage } from "@/components/ui/safe-image"
 
 interface PostCardProps {
     id: string
@@ -19,10 +19,10 @@ interface PostCardProps {
     content: string
     likes: number
     comments: number
-    createdAt?: any
+    createdAt?: string | Date
 }
 
-export function PostCard({ id, author, images, content, likes, comments }: PostCardProps) {
+export function PostCard({ author, images, content, likes }: PostCardProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
     const [isLiked, setIsLiked] = useState(false)
 
@@ -30,7 +30,14 @@ export function PostCard({ id, author, images, content, likes, comments }: PostC
         <Card className="overflow-hidden border-none shadow-md">
             <CardHeader className="flex flex-row items-center gap-4 p-4">
                 <div className="relative h-10 w-10 overflow-hidden rounded-full cursor-pointer" onClick={() => window.location.href = `/profile/${author.slug}`}>
-                    <Image src={author.avatar || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80"} alt={author.name} fill className="object-cover" sizes="40px" />
+                    <SafeImage
+                        src={author.avatar || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80"}
+                        alt={author.name}
+                        fill
+                        className="object-cover"
+                        sizes="40px"
+                        fallbackSrc={`https://ui-avatars.com/api/?name=${encodeURIComponent(author.name)}&background=random`}
+                    />
                 </div>
                 <div className="flex flex-col">
                     <span className="font-semibold cursor-pointer hover:text-primary" onClick={() => window.location.href = `/profile/${author.slug}`}>{author.name}</span>
@@ -40,7 +47,7 @@ export function PostCard({ id, author, images, content, likes, comments }: PostC
             <div className="relative aspect-square w-full bg-muted">
                 {images && images.length > 0 ? (
                     <>
-                        <Image src={images[currentImageIndex]} alt="Post content" fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" priority={false} />
+                        <SafeImage src={images[currentImageIndex]} alt="Post content" fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" priority={false} />
                         {images.length > 1 && (
                             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 px-2 py-1 bg-black/20 backdrop-blur-md rounded-full">
                                 {images.map((_, i) => (

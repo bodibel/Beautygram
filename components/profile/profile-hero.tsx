@@ -3,7 +3,6 @@
 import Image from "next/image"
 import { MapPin, MessageCircle, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { FavoriteButton } from "@/components/salon/FavoriteButton"
 
 // Category slug to label mapping

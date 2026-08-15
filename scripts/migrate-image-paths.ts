@@ -6,17 +6,6 @@ async function main() {
   console.log("Starting image path migration from /uploads/ to /api/files/...");
 
   // 1. Update Salon images
-  const salons = await prisma.salon.findMany({
-    where: {
-      OR: [
-        { images: { hasSome: ["/uploads/"] } }, // This doesn't work well with prefix, simpler check below
-        { profileImage: { startsWith: "/uploads/" } },
-        { coverImage: { startsWith: "/uploads/" } },
-        { ownerImage: { startsWith: "/uploads/" } }
-      ]
-    }
-  });
-  
   // Real check for array items
   const allSalons = await prisma.salon.findMany();
   for (const salon of allSalons) {

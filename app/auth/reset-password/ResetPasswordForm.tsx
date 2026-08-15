@@ -7,6 +7,10 @@ import { Input } from "@/components/ui/input"
 import { resetPassword } from "@/lib/actions/password-reset"
 import { Eye, EyeOff } from "lucide-react"
 
+function getErrorMessage(error: unknown) {
+    return error instanceof Error ? error.message : "Hiba történt a jelszó visszaállítása során."
+}
+
 export function ResetPasswordForm() {
     const searchParams = useSearchParams()
     const router = useRouter()
@@ -54,8 +58,8 @@ export function ResetPasswordForm() {
                     router.push("/")
                 }, 3000)
             }
-        } catch (err: any) {
-            setError("Hiba történt a jelszó visszaállítása során.")
+        } catch (error) {
+            setError(getErrorMessage(error))
         } finally {
             setLoading(false)
         }

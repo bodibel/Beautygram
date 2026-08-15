@@ -13,35 +13,33 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
     const { userData } = useAuth()
+    const userId = userData?.id
     const [unreadCount, setUnreadCount] = useState(0)
 
     const refreshUnreadCount = useCallback(async () => {
-        if (!userData?.id) return
+        if (!userId) return
         try {
-            const count = await getUnreadMessageCount(userData.id)
+            const count = await getUnreadMessageCount(userId)
             setUnreadCount(count)
         } catch (error) {
             console.error("Error refreshing unread count:", error)
         }
-    }, [userData?.id])
+    }, [userId])
 
     useEffect(() => {
-        if (!userData?.id) {
-            setUnreadCount(0)
-            return
-        }
+        if (!userId) return
 
-        // Initial fetch
-        refreshUnreadCount()
-
-        // Set up polling (every 30 seconds)
+        const initialRefresh = setTimeout(refreshUnreadCount, 0)
         const interval = setInterval(refreshUnreadCount, 30000)
 
-        return () => clearInterval(interval)
-    }, [userData?.id, refreshUnreadCount])
+        return () => {
+            clearTimeout(initialRefresh)
+            clearInterval(interval)
+        }
+    }, [userId, refreshUnreadCount])
 
     return (
-        <NotificationContext.Provider value={{ unreadCount, refreshUnreadCount }}>
+        <NotificationContext.Provider value={{ unreadCount: userId ? unreadCount : 0, refreshUnreadCount }}>
             {children}
         </NotificationContext.Provider>
     )

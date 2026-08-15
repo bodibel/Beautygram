@@ -1,18 +1,23 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import { MainLayout } from "@/components/layout/main-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, Send, User, ChevronRight, MessageSquare, ShieldCheck, Mail, Inbox, AlertCircle } from "lucide-react"
+import { Search, Send, User, ShieldCheck, Mail, Inbox } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { getUserMessages, sendMessage, markMessageAsRead, getAdminUser } from "@/lib/actions/salon"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { hu } from "date-fns/locale"
+
+type UserMessage = Awaited<ReturnType<typeof getUserMessages>>[number]
+type AdminUser = NonNullable<Awaited<ReturnType<typeof getAdminUser>>>
+type ThreadMessage = UserMessage | { content: string; createdAt: string; subject?: string | null }
 
 interface Thread {
     id: string;
@@ -21,20 +26,22 @@ interface Thread {
         name: string | null;
         image: string | null;
     };
-    lastMessage: any;
-    messages: any[];
+    lastMessage: ThreadMessage;
+    messages: UserMessage[];
     unreadCount: number;
 }
 
 export default function MessagesPage() {
     const { userData } = useAuth()
-    const [messages, setMessages] = useState<any[]>([])
+    const searchParams = useSearchParams()
+    const selectedSalonId = searchParams.get("salon")
+    const [messages, setMessages] = useState<UserMessage[]>([])
     const [loading, setLoading] = useState(true)
     const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
     const [replyContent, setReplyContent] = useState("")
     const [sending, setSending] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
-    const [admin, setAdmin] = useState<{ id: string, name: string, image: string | null } | null>(null)
+    const [admin, setAdmin] = useState<AdminUser | null>(null)
 
     // Reference for scrolling
     const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -61,7 +68,7 @@ export default function MessagesPage() {
     const loadAdmin = async () => {
         const adminUser = await getAdminUser()
         if (adminUser) {
-            setAdmin(adminUser as any)
+            setAdmin(adminUser)
         }
     }
 
@@ -78,41 +85,76 @@ export default function MessagesPage() {
         }
     }, [userData?.id, loadMessages])
 
-    // Group messages into threads
-    const threads: Thread[] = []
-    const messagesMap = new Map<string, any[]>()
+    const scopedMessages = useMemo(() => {
+        if (!selectedSalonId) return messages
+        return messages.filter((message) => message.salonId === selectedSalonId)
+    }, [messages, selectedSalonId])
 
-    messages.forEach(msg => {
-        const otherUserId = msg.senderId === userData?.id ? msg.receiverId : msg.senderId
-        if (!messagesMap.has(otherUserId)) {
-            messagesMap.set(otherUserId, [])
-        }
-        messagesMap.get(otherUserId)?.push(msg)
-    })
+    const selectedSalonName = scopedMessages.find((message) => message.salon?.id === selectedSalonId)?.salon?.name
 
-    messagesMap.forEach((msgs, otherUserId) => {
-        const sortedMsgs = [...msgs].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-        const lastMsg = sortedMsgs[sortedMsgs.length - 1]
-        const otherUser = lastMsg.senderId === userData?.id ? lastMsg.receiver : lastMsg.sender
+    const threads: Thread[] = useMemo(() => {
+        const groupedThreads: Thread[] = []
+        const messagesMap = new Map<string, UserMessage[]>()
 
-        threads.push({
-            id: otherUserId,
-            otherUser,
-            lastMessage: lastMsg,
-            messages: sortedMsgs,
-            unreadCount: msgs.filter(m => !m.isRead && m.receiverId === userData?.id).length
+        scopedMessages.forEach((message) => {
+            const otherUserId = message.senderId === userData?.id ? message.receiverId : message.senderId
+            if (!messagesMap.has(otherUserId)) {
+                messagesMap.set(otherUserId, [])
+            }
+            messagesMap.get(otherUserId)?.push(message)
         })
-    })
 
-    // Sort threads by last message time
-    threads.sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime())
+        messagesMap.forEach((threadMessages, otherUserId) => {
+            const sortedMessages = [...threadMessages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+            const lastMessage = sortedMessages[sortedMessages.length - 1]
+            const otherUser = lastMessage.senderId === userData?.id ? lastMessage.receiver : lastMessage.sender
+
+            groupedThreads.push({
+                id: otherUserId,
+                otherUser,
+                lastMessage,
+                messages: sortedMessages,
+                unreadCount: threadMessages.filter((message) => !message.isRead && message.receiverId === userData?.id).length
+            })
+        })
+
+        return groupedThreads.sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime())
+    }, [scopedMessages, userData?.id])
 
     const filteredThreads = threads.filter(t =>
         t.otherUser.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.lastMessage.content.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
-    let activeThread = threads.find(t => t.id === activeThreadId)
+    const activeThread = useMemo<Thread | undefined>(() => {
+        const thread = threads.find((item) => item.id === activeThreadId)
+        if (thread) return thread
+
+        if (activeThreadId && admin && activeThreadId === admin.id) {
+            return {
+                id: admin.id,
+                otherUser: {
+                    id: admin.id,
+                    name: admin.name,
+                    image: admin.image
+                },
+                lastMessage: { content: "", createdAt: new Date().toISOString() },
+                messages: [],
+                unreadCount: 0
+            }
+        }
+    }, [activeThreadId, admin, threads])
+
+    useEffect(() => {
+        if (!selectedSalonId) return
+        if (threads.length === 0) {
+            setActiveThreadId(null)
+            return
+        }
+        if (!activeThreadId || !threads.some((thread) => thread.id === activeThreadId)) {
+            setActiveThreadId(threads[0].id)
+        }
+    }, [activeThreadId, selectedSalonId, threads])
 
     // Effect to auto-read messages when thread is active and new messages arrive
     useEffect(() => {
@@ -129,22 +171,7 @@ export default function MessagesPage() {
             }
             scrollToBottom()
         }
-    }, [activeThread?.messages.length, activeThreadId, userData?.id])
-
-    // If trying to message admin and no thread exists, create a dummy one
-    if (!activeThread && activeThreadId && admin && activeThreadId === admin.id) {
-        activeThread = {
-            id: admin.id,
-            otherUser: {
-                id: admin.id,
-                name: admin.name,
-                image: admin.image
-            },
-            lastMessage: { content: "", createdAt: new Date().toISOString() },
-            messages: [],
-            unreadCount: 0
-        }
-    }
+    }, [activeThread, loadMessages, userData?.id])
 
     const handleSendReply = async () => {
         if (!userData?.id || !activeThreadId || !replyContent.trim()) return
@@ -155,7 +182,8 @@ export default function MessagesPage() {
                 senderId: userData.id,
                 receiverId: activeThreadId,
                 content: replyContent,
-                subject: activeThread?.lastMessage.subject || "Válasz"
+                subject: activeThread?.lastMessage.subject || "Válasz",
+                salonId: selectedSalonId || activeThread?.messages[0]?.salonId || undefined,
             })
             setReplyContent("")
             await loadMessages(true)
@@ -181,8 +209,8 @@ export default function MessagesPage() {
 
     if (!userData) {
         return (
-            <MainLayout showRightSidebar={false}>
-                <div className="container mx-auto p-6 flex items-center justify-center min-h-[60vh]">
+            <MainLayout showRightSidebar={false} fullWidth>
+                <div className="mx-auto flex min-h-[60vh] w-full max-w-6xl items-center justify-center px-2 py-2 sm:px-0">
                     <Card className="max-w-md w-full text-center p-8 space-y-4">
                         <div className="bg-primary/10 rounded-full h-16 w-16 flex items-center justify-center mx-auto text-primary">
                             <ShieldCheck className="h-8 w-8" />
@@ -197,13 +225,20 @@ export default function MessagesPage() {
     }
 
     return (
-        <MainLayout showRightSidebar={false}>
-            <div className="max-w-7xl mx-auto px-4 py-8 h-[calc(100vh-100px)]">
-                <div className="flex flex-col md:flex-row gap-6 h-full">
+        <MainLayout showRightSidebar={false} fullWidth>
+            <div className="mx-auto h-[calc(100vh-6rem)] w-full max-w-6xl px-2 py-2 sm:px-0">
+                <div className={cn("flex h-full flex-col gap-6", !loading && filteredThreads.length === 0 ? "items-center" : "md:flex-row")}>
                     {/* Sidebar: Thread List */}
-                    <div className="w-full md:w-[350px] flex flex-col gap-4 h-full">
+                    <div className={cn("flex h-full w-full flex-col gap-4", !loading && filteredThreads.length === 0 ? "max-w-xl" : "md:w-[350px]")}>
                         <div className="flex items-center justify-between">
-                            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Üzenetek</h1>
+                            <div>
+                                <h1 className="text-2xl font-black text-gray-900 tracking-tight">Üzenetek</h1>
+                                {selectedSalonId && (
+                                    <p className="mt-1 text-xs font-bold text-primary">
+                                        {selectedSalonName ? `${selectedSalonName} szalon üzenetei` : "Szalonhoz kapcsolt üzenetek"}
+                                    </p>
+                                )}
+                            </div>
                             {admin && userData.id !== admin.id && (
                                 <Button
                                     variant="ghost"
@@ -239,6 +274,7 @@ export default function MessagesPage() {
                                         {filteredThreads.map(thread => (
                                             <button
                                                 key={thread.id}
+                                                data-testid={`message-thread-${thread.id}`}
                                                 onClick={() => handleSelectThread(thread.id)}
                                                 className={cn(
                                                     "w-full flex items-center gap-3 p-4 text-left transition-colors hover:bg-gray-50 group",
@@ -247,7 +283,7 @@ export default function MessagesPage() {
                                             >
                                                 <div className="relative">
                                                     <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
-                                                        <AvatarImage src={thread.otherUser.image || ""} />
+                                                        <AvatarImage src={thread.otherUser.image || ""} alt={thread.otherUser.name || ""} />
                                                         <AvatarFallback className="bg-gray-100 text-gray-600 text-xs font-bold">
                                                             {thread.otherUser.name?.[0] || <User className="h-4 w-4" />}
                                                         </AvatarFallback>
@@ -285,9 +321,13 @@ export default function MessagesPage() {
                                         <div className="bg-gray-50 rounded-full h-16 w-16 flex items-center justify-center mb-4">
                                             <Mail className="h-8 w-8 text-gray-200" />
                                         </div>
-                                        <h3 className="font-bold text-gray-900">Nincsenek üzenetek</h3>
+                                        <h3 className="font-bold text-gray-900">
+                                            {selectedSalonId ? "Nincsenek szalonhoz kapcsolt üzenetek" : "Nincsenek üzenetek"}
+                                        </h3>
                                         <p className="text-xs text-gray-400 mt-1 max-w-[200px] mx-auto leading-relaxed">
-                                            Itt jelennek meg a kapott és küldött üzeneteid.
+                                            {selectedSalonId
+                                                ? "Ennél a szalonnál még nincs megnyitott beszélgetés."
+                                                : "Itt jelennek meg a kapott és küldött üzeneteid."}
                                         </p>
                                     </div>
                                 )}
@@ -296,6 +336,7 @@ export default function MessagesPage() {
                     </div>
 
                     {/* Main Content: Message Thread */}
+                    {(!loading && filteredThreads.length === 0) ? null : (
                     <div className="flex-1 flex flex-col h-full">
                         {activeThread ? (
                             <Card className="flex-1 overflow-hidden border-gray-100 shadow-sm rounded-2xl flex flex-col bg-white">
@@ -303,7 +344,7 @@ export default function MessagesPage() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-10 w-10 border border-gray-100">
-                                                <AvatarImage src={activeThread.otherUser.image || ""} />
+                                                <AvatarImage src={activeThread.otherUser.image || ""} alt={activeThread.otherUser.name || ""} />
                                                 <AvatarFallback className="bg-gray-100 text-gray-500 text-xs font-bold">
                                                     {activeThread.otherUser.name?.[0] || "?"}
                                                 </AvatarFallback>
@@ -320,11 +361,12 @@ export default function MessagesPage() {
                                 </CardHeader>
 
                                 <CardContent className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/30">
-                                    {activeThread.messages.map((msg, index) => {
+                                    {activeThread.messages.map((msg) => {
                                         const isMine = msg.senderId === userData.id
                                         return (
                                             <div
                                                 key={msg.id}
+                                                data-testid="message-bubble"
                                                 className={cn(
                                                     "flex flex-col max-w-[80%]",
                                                     isMine ? "ml-auto items-end" : "mr-auto items-start"
@@ -366,6 +408,7 @@ export default function MessagesPage() {
                                     <div className="flex items-center gap-2">
                                         <Textarea
                                             placeholder="Válasz írása..."
+                                            data-testid="message-reply-input"
                                             className="min-h-[44px] h-[44px] flex-1 resize-none bg-gray-50/50 border-transparent focus:border-primary/10 focus:bg-white rounded-xl transition-all py-3 px-4 text-sm"
                                             value={replyContent}
                                             onChange={(e) => setReplyContent(e.target.value)}
@@ -378,6 +421,7 @@ export default function MessagesPage() {
                                         />
                                         <Button
                                             size="icon"
+                                            data-testid="message-reply-submit"
                                             className="h-11 w-11 rounded-xl bg-primary hover:bg-primary shadow-md shadow-primary/10 transition-all active:scale-90 shrink-0"
                                             disabled={!replyContent.trim() || sending}
                                             onClick={handleSendReply}
@@ -399,6 +443,7 @@ export default function MessagesPage() {
                             </Card>
                         )}
                     </div>
+                    )}
                 </div>
             </div>
         </MainLayout>

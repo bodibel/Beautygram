@@ -13,10 +13,16 @@ import { SubscriptionPlan, SubscriptionStatus } from "@prisma/client"
 import { sendSubscriptionExpiryWarning } from "@/lib/mail"
 
 export async function GET(req: NextRequest) {
+  // Fail-closed: ha a titok nincs beállítva, a végpont nem hívható.
   const cronSecret = process.env.CRON_SECRET
   const authHeader = req.headers.get("authorization")
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    console.error("[cron] subscription-reminders: CRON_SECRET nincs beállítva, a hívás elutasítva")
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

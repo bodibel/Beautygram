@@ -23,6 +23,13 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Scissors, Sparkles, Hand, User, Palette, Waves, Smile,
 }
 
+type CategoryFilter = {
+  id: string
+  name: string
+  slug: string
+  icon?: string | null
+}
+
 const EU_COUNTRIES = [
   { code: "HU", name: "Magyarország" },
   { code: "AT", name: "Ausztria" },
@@ -48,11 +55,10 @@ export function FilterPanel({ onApply, compact = false }: FilterPanelProps) {
     addServiceFilter,
     removeServiceFilter,
     updateSearchQuery,
-    clearFilters,
   } = useFilter()
 
   const [isCountryOpen, setIsCountryOpen] = useState(false)
-  const [categories, setCategories] = useState<any[]>([])
+  const [categories, setCategories] = useState<CategoryFilter[]>([])
 
   useEffect(() => {
     getCategories().then(setCategories)
@@ -257,6 +263,12 @@ export function FilterPanel({ onApply, compact = false }: FilterPanelProps) {
           })}
         </div>
       </div>
+
+      {onApply && (
+        <Button type="button" onClick={onApply} className={cn("w-full", compact && "h-8 text-xs")}>
+          Szűrők alkalmazása
+        </Button>
+      )}
     </div>
   )
 }

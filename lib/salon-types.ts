@@ -25,7 +25,7 @@ export interface Post {
     content: string
     images?: string[]
     layout?: string
-    createdAt: any
+    createdAt: string | Date
     _count?: {
         likes: number
         comments: number
@@ -46,6 +46,7 @@ export interface Post {
 export interface Salon {
     id: string
     name: string
+    slug: string
     country: string
     city: string
     district?: string
@@ -67,6 +68,7 @@ export interface Salon {
     email?: string
     phone?: string
     website?: string
+    allowBookings?: boolean
     languages?: string[]
     lat?: number
     lng?: number
@@ -89,13 +91,13 @@ export interface TeamMember {
 
 export interface Booking {
     id: string
-    date: any
+    date: string | Date
     time: string
     status: string
     userId: string
     salonId: string
     serviceId: string
-    createdAt: any
+    createdAt: string | Date
 }
 
 export interface Message {
@@ -105,7 +107,7 @@ export interface Message {
     senderId: string
     receiverId: string
     isRead: boolean
-    createdAt: any
+    createdAt: string | Date
 }
 
 

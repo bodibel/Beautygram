@@ -2,10 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 
-interface Suggestion {
-    placePrediction: google.maps.places.AutocompletePrediction;
-}
-
 interface UsePlacesAutocompleteNewProps {
     requestOptions?: {
         componentRestrictions?: { country: string | string[] };
@@ -16,6 +12,45 @@ interface UsePlacesAutocompleteNewProps {
     initOnMount?: boolean;
 }
 
+type LegacyAutocompletePrediction = {
+    description: string
+    place_id: string
+    structured_formatting: {
+        main_text: string
+        secondary_text: string
+    }
+}
+
+type AutocompleteRequest = {
+    input: string
+    sessionToken: google.maps.places.AutocompleteSessionToken | null
+    includedRegionCodes?: string[]
+    includedPrimaryTypes?: string[]
+}
+
+type PlacePrediction = {
+    text?: { text?: string }
+    structuredFormat?: {
+        mainText?: { text?: string }
+        secondaryText?: { text?: string }
+    }
+    mainText?: { text?: string }
+    secondaryText?: { text?: string }
+    placeId?: string
+}
+
+type AutocompleteSuggestionResult = {
+    placePrediction?: PlacePrediction
+}
+
+type PlacesAutocompleteApi = typeof google.maps.places & {
+    AutocompleteSuggestion?: {
+        fetchAutocompleteSuggestions: (request: AutocompleteRequest) => Promise<{
+            suggestions: AutocompleteSuggestionResult[]
+        }>
+    }
+}
+
 export default function usePlacesAutocompleteNew({
     requestOptions,
     debounce = 300,
@@ -24,7 +59,7 @@ export default function usePlacesAutocompleteNew({
 }: UsePlacesAutocompleteNewProps = {}) {
     const [ready, setReady] = useState(false)
     const [value, setValue] = useState(defaultValue)
-    const [suggestions, setSuggestions] = useState<{ status: string; data: google.maps.places.AutocompletePrediction[] }>({
+    const [suggestions, setSuggestions] = useState<{ status: string; data: LegacyAutocompletePrediction[] }>({
         status: "",
         data: []
     })
@@ -33,21 +68,24 @@ export default function usePlacesAutocompleteNew({
 
     useEffect(() => {
         if (typeof window !== "undefined" && window.google && window.google.maps && window.google.maps.places && initOnMount) {
-            setReady(true)
-            if (!sessionTokenRef.current) {
-                sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken()
-            }
+            const timer = window.setTimeout(() => {
+                setReady(true)
+                if (!sessionTokenRef.current) {
+                    sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken()
+                }
+            }, 0)
+            return () => window.clearTimeout(timer)
         }
     }, [initOnMount])
 
     const fetchSuggestions = useCallback(async (val: string) => {
-        if (!val || !(window as any).google?.maps?.places) {
+        if (!val || !window.google?.maps?.places) {
             setSuggestions({ status: "", data: [] })
             return
         }
 
         try {
-            const { AutocompleteSuggestion } = (window as any).google.maps.places
+            const { AutocompleteSuggestion } = window.google.maps.places as PlacesAutocompleteApi
             if (!AutocompleteSuggestion) {
                 // Fallback or early exit if New API is not yet available in the loaded script
                 setSuggestions({ status: "ERROR", data: [] })
@@ -56,12 +94,11 @@ export default function usePlacesAutocompleteNew({
 
             // Build request for the new Places API
             // Translate componentRestrictions to includedRegionCodes
-            const { componentRestrictions, types, ...restOptions } = requestOptions || {}
+            const { componentRestrictions, types } = requestOptions || {}
 
-            const request: any = {
+            const request: AutocompleteRequest = {
                 input: val,
                 sessionToken: sessionTokenRef.current,
-                ...restOptions
             }
 
             // Convert componentRestrictions.country to includedRegionCodes
@@ -84,7 +121,7 @@ export default function usePlacesAutocompleteNew({
             // Transform new API format to legacy format for backwards compatibility
             // New API: { text: { text: "City Name" }, placeId: "..." }
             // Legacy format expected by UI: { description: "City Name", place_id: "..." }
-            const transformedData = response.suggestions.map((s: any) => {
+            const transformedData = response.suggestions.map((s) => {
                 const prediction = s.placePrediction
                 return {
                     description: prediction?.text?.text || prediction?.structuredFormat?.mainText?.text || prediction?.mainText?.text || "",
@@ -101,7 +138,7 @@ export default function usePlacesAutocompleteNew({
                 status: transformedData.length > 0 ? "OK" : "ZERO_RESULTS",
                 data: transformedData
             })
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error fetching suggestions:", error)
             setSuggestions({ status: "ERROR", data: [] })
         }

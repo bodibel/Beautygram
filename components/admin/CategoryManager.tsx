@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useState, useEffect, useCallback } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { getCategories, updateCategory } from "@/lib/actions/category"
 import { CategoryModal } from "./CategoryModal"
@@ -10,7 +10,6 @@ import {
     Edit2,
     Eye,
     EyeOff,
-    MoreVertical,
     Scissors,
     Sparkles,
     Hand,
@@ -21,7 +20,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
-const ICON_MAP: Record<string, any> = {
+const ICON_MAP: Record<string, React.ElementType> = {
     "Scissors": Scissors,
     "Sparkles": Sparkles,
     "Hand": Hand,
@@ -31,13 +30,22 @@ const ICON_MAP: Record<string, any> = {
     "Smile": Smile,
 }
 
+export type AdminCategory = {
+    id: string
+    name: string
+    slug: string
+    icon?: string | null
+    order: number
+    isActive: boolean
+}
+
 export function CategoryManager() {
-    const [categories, setCategories] = useState<any[]>([])
+    const [categories, setCategories] = useState<AdminCategory[]>([])
     const [loading, setLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [selectedCategory, setSelectedCategory] = useState<any>(null)
+    const [selectedCategory, setSelectedCategory] = useState<AdminCategory | null>(null)
 
-    const loadCategories = async () => {
+    const loadCategories = useCallback(async () => {
         setLoading(true)
         try {
             // Updated getCategories to fetch even inactive ones.
@@ -49,25 +57,25 @@ export function CategoryManager() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [])
 
     useEffect(() => {
         loadCategories()
-    }, [])
+    }, [loadCategories])
 
-    const handleToggleStatus = async (category: any) => {
+    const handleToggleStatus = async (category: AdminCategory) => {
         try {
             const result = await updateCategory(category.id, { isActive: !category.isActive })
             if (result.success) {
                 toast.success(category.isActive ? "Kategória elrejtve" : "Kategória aktiválva")
                 loadCategories()
             }
-        } catch (error) {
+        } catch {
             toast.error("Váratlan hiba történt.")
         }
     }
 
-    const handleEdit = (category: any) => {
+    const handleEdit = (category: AdminCategory) => {
         setSelectedCategory(category)
         setIsModalOpen(true)
     }

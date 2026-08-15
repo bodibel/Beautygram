@@ -2,6 +2,8 @@
 
 import prisma from "@/lib/db"
 import bcrypt from "bcryptjs"
+import { AUDIT_ACTIONS, getAuditActionContext, writeAuditLog } from "@/lib/audit-log"
+import { validatePassword } from "@/lib/auth/password-policy"
 import { sendPasswordResetEmail } from "@/lib/mail"
 import { generatePasswordResetToken } from "@/lib/tokens"
 
@@ -21,6 +23,15 @@ export async function resetPasswordRequest(email: string) {
             passwordResetToken.email,
             passwordResetToken.token
         )
+
+        await writeAuditLog({
+            action: AUDIT_ACTIONS.PASSWORD_RESET_REQUEST,
+            userId: user.id,
+            entity: "User",
+            entityId: user.id,
+            metadata: { email },
+            ...(await getAuditActionContext()),
+        })
 
         return { success: "A jelszóvisszaállító email elküldve!" }
     } catch (error) {
@@ -53,6 +64,11 @@ export async function resetPassword(password: string, token: string) {
             return { error: "A felhasználó nem található!" }
         }
 
+        const passwordError = validatePassword(password)
+        if (passwordError) {
+            return { error: passwordError }
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10)
 
         await prisma.user.update({
@@ -62,6 +78,14 @@ export async function resetPassword(password: string, token: string) {
 
         await prisma.passwordResetToken.delete({
             where: { id: existingToken.id }
+        })
+
+        await writeAuditLog({
+            action: AUDIT_ACTIONS.PASSWORD_RESET_COMPLETE,
+            userId: existingUser.id,
+            entity: "User",
+            entityId: existingUser.id,
+            ...(await getAuditActionContext()),
         })
 
         return { success: "A jelszó sikeresen megváltoztatva!" }

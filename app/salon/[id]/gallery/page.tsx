@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 import { useSalonData } from "@/hooks/useSalonData"
 import { updateSalon } from "@/lib/actions/salon"
 import { UploadCloud, Trash2 } from "lucide-react"
+import Image from "next/image"
 
 export default function SalonGalleryPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params)
@@ -134,9 +135,11 @@ export default function SalonGalleryPage({ params }: { params: Promise<{ id: str
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {salon.images.map((img: string, index: number) => (
                                         <div key={index} className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                                            <img
+                                            <Image
                                                 src={img}
                                                 alt={`Gallery ${index}`}
+                                                fill
+                                                sizes="(min-width: 768px) 25vw, 50vw"
                                                 className="object-cover w-full h-full"
                                             />
                                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">

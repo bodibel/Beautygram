@@ -8,7 +8,11 @@ export function HeroBanner() {
             {/* Background Image / Gradient */}
             <div className="absolute inset-0 bg-gradient-to-r from-gray-900 via-gray-900/60 to-transparent z-10" />
             <div
-                className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1621786030484-4c855b314a67?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-70"
+                className="absolute inset-0 bg-cover bg-center opacity-70"
+                style={{
+                    backgroundImage:
+                        "url('https://images.unsplash.com/photo-1621786030484-4c855b314a67?q=80&w=2070&auto=format&fit=crop')",
+                }}
             />
 
             <div className="relative z-20 flex flex-col items-start gap-3 p-6 sm:p-8 md:max-w-[70%]">

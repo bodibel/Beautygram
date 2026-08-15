@@ -2,20 +2,30 @@
 
 import prisma from "@/lib/db"
 import { revalidatePath } from "next/cache"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { requireSession } from "@/lib/auth-utils"
+import { AUDIT_ACTIONS, getAuditActionContext, writeAuditLog } from "@/lib/audit-log"
+import { requireAdminSession, requireSession } from "@/lib/auth-utils"
+import {
+    canDeactivateAdminUser,
+    canDeleteAdminUser,
+    canRemoveAdminRole,
+    isUserRole,
+} from "@/lib/auth/role-policy"
 
-async function isAdmin() {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return false
-    
-    const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true }
-    })
-    
-    return user?.role === "admin"
+async function requireAdmin() {
+    try {
+        const user = await requireAdminSession()
+        return user.id
+    } catch {
+        return null
+    }
+}
+
+async function getAdminCount() {
+    return prisma.user.count({ where: { role: "admin" } })
+}
+
+async function getActiveAdminCount() {
+    return prisma.user.count({ where: { role: "admin", isActive: true } })
 }
 
 export async function updateProfile(userId: string, data: { name?: string }) {
@@ -48,7 +58,7 @@ export async function inactivateAccount(userId: string) {
         await prisma.$transaction(async (tx) => {
             await tx.user.update({
                 where: { id: userId },
-                data: { isActive: false, inactivatedAt: now }
+                data: { isActive: false, inactivatedAt: now, deactivatedBy: "self" }
             })
             await tx.salon.updateMany({
                 where: { ownerId: userId, isActive: true },
@@ -66,6 +76,13 @@ export async function inactivateAccount(userId: string) {
                 })
             }
         })
+        await writeAuditLog({
+            action: AUDIT_ACTIONS.ACCOUNT_SELF_DEACTIVATE,
+            userId,
+            entity: "User",
+            entityId: userId,
+            ...(await getAuditActionContext()),
+        })
         return { success: true }
     } catch (error) {
         console.error("Error inactivating account:", error)
@@ -82,7 +99,7 @@ export async function restoreAccount(userId: string) {
         await prisma.$transaction(async (tx) => {
             await tx.user.update({
                 where: { id: userId },
-                data: { isActive: true, inactivatedAt: null }
+                data: { isActive: true, inactivatedAt: null, deactivatedBy: null }
             })
             await tx.salon.updateMany({
                 where: { ownerId: userId, inactivatedAt: { not: null } },
@@ -100,6 +117,13 @@ export async function restoreAccount(userId: string) {
                 })
             }
         })
+        await writeAuditLog({
+            action: AUDIT_ACTIONS.ACCOUNT_SELF_RESTORE,
+            userId,
+            entity: "User",
+            entityId: userId,
+            ...(await getAuditActionContext()),
+        })
         return { success: true }
     } catch (error) {
         console.error("Error restoring account:", error)
@@ -108,7 +132,7 @@ export async function restoreAccount(userId: string) {
 }
 
 export async function getAllUsers() {
-    if (!(await isAdmin())) {
+    if (!(await requireAdmin())) {
         return { success: false, error: "Unauthorized" }
     }
 
@@ -129,11 +153,32 @@ export async function getAllUsers() {
 }
 
 export async function updateUserAdmin(userId: string, data: { name?: string, email?: string, role?: string }) {
-    if (!(await isAdmin())) {
+    const currentAdminId = await requireAdmin()
+    if (!currentAdminId) {
         return { success: false, error: "Unauthorized" }
     }
 
     try {
+        const existingUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true }
+        })
+
+        if (!existingUser) return { success: false, error: "Felhasználó nem található." }
+
+        if (data.role !== undefined && !isUserRole(data.role)) {
+            return { success: false, error: "Érvénytelen szerepkör." }
+        }
+
+        if (existingUser.role === "admin" && data.role !== undefined && data.role !== "admin") {
+            const removalCheck = canRemoveAdminRole({
+                targetUserId: userId,
+                currentAdminId,
+                adminCount: await getAdminCount(),
+            })
+            if (!removalCheck.allowed) return { success: false, error: removalCheck.error }
+        }
+
         const user = await prisma.user.update({
             where: { id: userId },
             data: {
@@ -141,6 +186,20 @@ export async function updateUserAdmin(userId: string, data: { name?: string, ema
                 email: data.email,
                 role: data.role,
             }
+        })
+        await writeAuditLog({
+            action: data.role !== undefined && data.role !== existingUser.role
+                ? AUDIT_ACTIONS.ADMIN_USER_ROLE_CHANGE
+                : AUDIT_ACTIONS.ADMIN_USER_UPDATE,
+            userId: currentAdminId,
+            entity: "User",
+            entityId: userId,
+            metadata: {
+                previousRole: existingUser.role,
+                newRole: data.role ?? existingUser.role,
+                changedFields: Object.keys(data).filter((key) => data[key as keyof typeof data] !== undefined),
+            },
+            ...(await getAuditActionContext()),
         })
         revalidatePath("/dashboard/admin/visitors")
         revalidatePath("/dashboard/admin/providers")
@@ -152,11 +211,38 @@ export async function updateUserAdmin(userId: string, data: { name?: string, ema
 }
 
 export async function deleteUserAdmin(userId: string) {
-    if (!(await isAdmin())) {
+    const currentAdminId = await requireAdmin()
+    if (!currentAdminId) {
         return { success: false, error: "Unauthorized" }
     }
 
     try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true, email: true }
+        })
+
+        if (!user) return { success: false, error: "Felhasználó nem található." }
+
+        const deleteCheck = canDeleteAdminUser({
+            targetUserId: userId,
+            currentAdminId,
+            targetRole: user.role,
+            adminCount: await getAdminCount(),
+        })
+        if (!deleteCheck.allowed) return { success: false, error: deleteCheck.error }
+
+        // A naplóbejegyzés a törlés ELŐTT készül, mert az AuditLog.userId
+        // SetNull kapcsolatban áll a User-rel, és a törölt fiók adatait meg akarjuk őrizni.
+        await writeAuditLog({
+            action: AUDIT_ACTIONS.ADMIN_USER_DELETE,
+            userId: currentAdminId,
+            entity: "User",
+            entityId: userId,
+            metadata: { deletedUserRole: user.role, deletedUserEmail: user.email },
+            ...(await getAuditActionContext()),
+        })
+
         await prisma.user.delete({
             where: { id: userId }
         })
@@ -170,24 +256,34 @@ export async function deleteUserAdmin(userId: string) {
 }
 
 export async function toggleUserActiveAdmin(userId: string) {
-    if (!(await isAdmin())) {
+    const currentAdminId = await requireAdmin()
+    if (!currentAdminId) {
         return { success: false, error: "Unauthorized" }
     }
 
     try {
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { isActive: true }
+            select: { isActive: true, role: true }
         })
 
         if (!user) return { success: false, error: "Felhasználó nem található." }
 
         const now = new Date()
         if (user.isActive) {
+            const deactivateCheck = canDeactivateAdminUser({
+                targetUserId: userId,
+                currentAdminId,
+                targetRole: user.role,
+                isTargetActive: user.isActive,
+                activeAdminCount: await getActiveAdminCount(),
+            })
+            if (!deactivateCheck.allowed) return { success: false, error: deactivateCheck.error }
+
             await prisma.$transaction(async (tx) => {
                 await tx.user.update({
                     where: { id: userId },
-                    data: { isActive: false, inactivatedAt: now }
+                    data: { isActive: false, inactivatedAt: now, deactivatedBy: "admin" }
                 })
                 await tx.salon.updateMany({
                     where: { ownerId: userId, isActive: true },
@@ -209,7 +305,7 @@ export async function toggleUserActiveAdmin(userId: string) {
             await prisma.$transaction(async (tx) => {
                 await tx.user.update({
                     where: { id: userId },
-                    data: { isActive: true, inactivatedAt: null }
+                    data: { isActive: true, inactivatedAt: null, deactivatedBy: null }
                 })
                 await tx.salon.updateMany({
                     where: { ownerId: userId, inactivatedAt: { not: null } },
@@ -229,6 +325,15 @@ export async function toggleUserActiveAdmin(userId: string) {
             })
         }
 
+        await writeAuditLog({
+            action: user.isActive ? AUDIT_ACTIONS.ADMIN_USER_DEACTIVATE : AUDIT_ACTIONS.ADMIN_USER_ACTIVATE,
+            userId: currentAdminId,
+            entity: "User",
+            entityId: userId,
+            metadata: { targetRole: user.role, newIsActive: !user.isActive },
+            ...(await getAuditActionContext()),
+        })
+
         revalidatePath("/dashboard/admin/visitors")
         revalidatePath("/dashboard/admin/providers")
         return { success: true, isActive: !user.isActive }
@@ -239,7 +344,8 @@ export async function toggleUserActiveAdmin(userId: string) {
 }
 
 export async function toggleUserRole(userId: string) {
-    if (!(await isAdmin())) {
+    const currentAdminId = await requireAdmin()
+    if (!currentAdminId) {
         return { success: false, error: "Unauthorized" }
     }
 
@@ -251,11 +357,24 @@ export async function toggleUserRole(userId: string) {
 
         if (!user) return { success: false, error: "Felhasználó nem található." }
 
+        if (user.role === "admin") {
+            return { success: false, error: "Admin szerepkör nem módosítható ezzel a gyors művelettel." }
+        }
+
         const newRole = user.role === "visitor" ? "provider" : "visitor"
 
         await prisma.user.update({
             where: { id: userId },
             data: { role: newRole }
+        })
+
+        await writeAuditLog({
+            action: AUDIT_ACTIONS.ADMIN_USER_ROLE_CHANGE,
+            userId: currentAdminId,
+            entity: "User",
+            entityId: userId,
+            metadata: { previousRole: user.role, newRole },
+            ...(await getAuditActionContext()),
         })
 
         revalidatePath("/dashboard/admin/visitors")

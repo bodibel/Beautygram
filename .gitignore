@@ -13,6 +13,8 @@
 # testing# Production data
 data/
 /coverage
+/test-results/
+/playwright-report/
 
 # next.js
 /.next/
@@ -38,6 +40,9 @@ yarn-error.log*
 # uploaded files
 /public/uploads/
 
+# local database snapshots / migration dry-runs
+.migration-dry-run/
+
 # archive files
 *.tar.gz
 *.tar
@@ -48,6 +53,14 @@ yarn-error.log*
 
 # lint report
 eslint-report.json
+
+# helyi fejlesztoi szerver logok
+dev-server*.log
+dev-server*.err.log
+
+# AI eszkozok munkakonyvtarai
+.codex-logs/
+.superpowers/
 
 # vercel
 .vercel

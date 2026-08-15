@@ -3,7 +3,7 @@
 import { Modal } from "@/components/ui/modal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { X, MapPin } from "lucide-react"
+import { X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Salon, CURRENCIES } from "@/lib/salon-types"
 import { getCategories } from "@/lib/actions/category"
@@ -11,6 +11,26 @@ import { EnhancedAddressPicker } from "@/components/ui/enhanced-address-picker"
 import { useLoadScript } from "@react-google-maps/api"
 
 const MAP_LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"]
+
+type CategoryOption = {
+    id: string
+    name: string
+    slug: string
+}
+
+type AddressFormData = {
+    fullAddress: string
+    city: string
+    district?: string
+    street?: string
+    houseNumber?: string
+    zipCode?: string
+    country?: string
+    lat?: number
+    lng?: number
+    floor?: string
+    door?: string
+}
 
 interface SettingsModalProps {
     isOpen: boolean
@@ -35,7 +55,7 @@ export function SettingsModal({ isOpen, onClose, onSave, salon }: SettingsModalP
     const [categories, setCategories] = useState<string[]>(salon?.categories || [])
     const [currency, setCurrency] = useState(salon?.currency || "HUF")
     const [description, setDescription] = useState(salon?.description || "")
-    const [allCategories, setAllCategories] = useState<any[]>([])
+    const [allCategories, setAllCategories] = useState<CategoryOption[]>([])
 
     useEffect(() => {
         const loadCategories = async () => {
@@ -47,28 +67,31 @@ export function SettingsModal({ isOpen, onClose, onSave, salon }: SettingsModalP
 
     const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
-    const { isLoaded } = useLoadScript({
+    useLoadScript({
         googleMapsApiKey: googleMapsKey || "",
         libraries: MAP_LIBRARIES,
     })
 
     useEffect(() => {
         if (salon && isOpen) {
-            setName(salon.name || "")
-            setAddress(salon.address || "")
-            setCity(salon.city || "")
-            setDistrict(salon.district || "")
-            setStreet(salon.street || "")
-            setHouseNumber(salon.houseNumber || "")
-            setZipCode(salon.zipCode || "")
-            setCountry(salon.country || "")
-            setLat(salon.lat)
-            setLng(salon.lng)
-            setFloor(salon.floor || "")
-            setDoor(salon.door || "")
-            setCategories(salon.categories || [])
-            setCurrency(salon.currency || "HUF")
-            setDescription(salon.description || "")
+            const timer = window.setTimeout(() => {
+                setName(salon.name || "")
+                setAddress(salon.address || "")
+                setCity(salon.city || "")
+                setDistrict(salon.district || "")
+                setStreet(salon.street || "")
+                setHouseNumber(salon.houseNumber || "")
+                setZipCode(salon.zipCode || "")
+                setCountry(salon.country || "")
+                setLat(salon.lat)
+                setLng(salon.lng)
+                setFloor(salon.floor || "")
+                setDoor(salon.door || "")
+                setCategories(salon.categories || [])
+                setCurrency(salon.currency || "HUF")
+                setDescription(salon.description || "")
+            }, 0)
+            return () => window.clearTimeout(timer)
         }
     }, [salon, isOpen])
 
@@ -105,7 +128,7 @@ export function SettingsModal({ isOpen, onClose, onSave, salon }: SettingsModalP
         })
     }
 
-    const handleAddressChange = (data: any) => {
+    const handleAddressChange = (data: AddressFormData) => {
         setAddress(data.fullAddress)
         setCity(data.city)
         setDistrict(data.district || "")

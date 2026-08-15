@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CURRENCIES } from "@/lib/salon-types"
 import { getCategories } from "@/lib/actions/category"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ImagePlus, X, Plus, Trash2, ChevronLeft, ChevronRight, Sparkles, Scissors, Sparkles as SparklesIcon, Hand, User, Palette, Waves, Smile, Phone, Mail, MessageSquare, Calendar, Bell } from "lucide-react"
+import { ImagePlus, X, Plus, Trash2, ChevronLeft, ChevronRight, Sparkles, Phone, Mail, MessageSquare, Calendar, Bell } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { EnhancedAddressPicker } from "@/components/ui/enhanced-address-picker"
 import { useLoadScript } from "@react-google-maps/api"
@@ -22,6 +22,7 @@ import { WizardProgress } from "./WizardProgress"
 import { WizardStep } from "./WizardStep"
 import { SafetyWarningModal } from "@/components/ui/SafetyWarningModal"
 import { uploadFile } from "@/lib/upload"
+import Image from "next/image"
 
 const MAP_LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"]
 
@@ -78,6 +79,21 @@ interface GalleryImage {
     description: string
 }
 
+interface CategoryOption {
+    id: string
+    name: string
+    slug: string
+    icon?: string | null
+}
+
+type OpeningHourField = keyof (typeof DEFAULT_HOURS)[number]
+type ServiceField = keyof Omit<Service, "id">
+type TeamMemberField = keyof Omit<TeamMember, "id" | "image" | "imagePreview">
+
+function getErrorMessage(error: unknown) {
+    return error instanceof Error ? error.message : "A kép feltöltése nem sikerült."
+}
+
 export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
     const { userData } = useAuth()
     const [currentStep, setCurrentStep] = useState(0)
@@ -125,7 +141,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
     const [ownerImage, setOwnerImage] = useState<File | null>(null)
     const [ownerImagePreview, setOwnerImagePreview] = useState<string | null>(null)
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
-    const [allCategories, setAllCategories] = useState<any[]>([])
+    const [allCategories, setAllCategories] = useState<CategoryOption[]>([])
 
     // Contact preferences
     const [phone, setPhone] = useState("")
@@ -221,7 +237,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
         )
     }
 
-    const updateHour = (index: number, field: string, value: any) => {
+    const updateHour = (index: number, field: OpeningHourField, value: string | boolean) => {
         setOpeningHours(prev => prev.map((h, i) =>
             i === index ? { ...h, [field]: value } : h
         ))
@@ -237,7 +253,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
         }])
     }
 
-    const updateService = (id: string, field: string, value: any) => {
+    const updateService = (id: string, field: ServiceField, value: string | number) => {
         setServices(prev => prev.map(s =>
             s.id === id ? { ...s, [field]: value } : s
         ))
@@ -286,7 +302,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
         }])
     }
 
-    const updateTeamMember = (id: string, field: string, value: any) => {
+    const updateTeamMember = (id: string, field: TeamMemberField, value: string) => {
         setTeamMembers(prev => prev.map(m =>
             m.id === id ? { ...m, [field]: value } : m
         ))
@@ -332,9 +348,10 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
             let profileImageUrl = null
             let coverImageUrl = null
 
-            const handleUploadError = (error: any, preview: string | null) => {
-                setSafetyError({ message: error.message, preview })
-                toast.error(error.message, {
+            const handleUploadError = (error: unknown, preview: string | null) => {
+                const message = getErrorMessage(error)
+                setSafetyError({ message, preview })
+                toast.error(message, {
                     duration: 5000,
                     position: "top-center"
                 })
@@ -344,7 +361,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
             if (profileImage) {
                 try {
                     profileImageUrl = await uploadFile(profileImage)
-                } catch (e: any) {
+                } catch (e) {
                     toast.dismiss(loadingToast);
                     if (handleUploadError(e, profilePreview)) return
                     throw e
@@ -353,7 +370,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
             if (coverImage) {
                 try {
                     coverImageUrl = await uploadFile(coverImage)
-                } catch (e: any) {
+                } catch (e) {
                     toast.dismiss(loadingToast);
                     if (handleUploadError(e, coverPreview)) return
                     throw e
@@ -367,7 +384,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
                     try {
                         const url = await uploadFile(img.file)
                         galleryImageUrls.push(url)
-                    } catch (e: any) {
+                    } catch (e) {
                         toast.dismiss(loadingToast);
                         if (handleUploadError(e, img.preview)) return
                         throw e
@@ -380,7 +397,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
             if (ownerImage) {
                 try {
                     ownerImageUrl = await uploadFile(ownerImage)
-                } catch (e: any) {
+                } catch (e) {
                     toast.dismiss(loadingToast);
                     if (handleUploadError(e, ownerImagePreview)) return
                     throw e
@@ -394,7 +411,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
                 if (member.image) {
                     try {
                         memberImageUrl = await uploadFile(member.image)
-                    } catch (e: any) {
+                    } catch (e) {
                         toast.dismiss(loadingToast);
                         if (handleUploadError(e, member.imagePreview)) return
                         throw e
@@ -552,7 +569,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
                                             <div className="relative h-32 w-32 mx-auto border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center overflow-hidden hover:border-primary transition-colors bg-gray-50">
                                                 {profilePreview ? (
                                                     <>
-                                                        <img src={profilePreview} alt="Profile" className="w-full h-full object-cover" />
+                                                        <Image src={profilePreview} alt="Profile" fill sizes="128px" className="w-full h-full object-cover" />
                                                         <button type="button" onClick={() => { setProfileImage(null); setProfilePreview(null) }} className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-full m-1">
                                                             <X className="h-3 w-3" />
                                                         </button>
@@ -571,7 +588,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
                                             <div className="relative h-32 w-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden hover:border-primary transition-colors bg-gray-50">
                                                 {coverPreview ? (
                                                     <>
-                                                        <img src={coverPreview} alt="Cover" className="w-full h-full object-cover" />
+                                                        <Image src={coverPreview} alt="Cover" fill sizes="300px" className="w-full h-full object-cover" />
                                                         <button type="button" onClick={() => { setCoverImage(null); setCoverPreview(null) }} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full">
                                                             <X className="h-3 w-3" />
                                                         </button>
@@ -857,7 +874,9 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                         {galleryImages.map((img) => (
                                             <div key={img.id} className="relative group">
-                                                <img src={img.preview} alt="" className="w-full h-32 object-cover rounded-lg" />
+                                                <div className="relative h-32 w-full overflow-hidden rounded-lg">
+                                                    <Image src={img.preview} alt="" fill sizes="(min-width: 640px) 33vw, 50vw" className="w-full h-32 object-cover rounded-lg" />
+                                                </div>
                                                 <button
                                                     type="button"
                                                     onClick={() => removeGalleryImage(img.id)}
@@ -905,7 +924,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
                                                 <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0">
                                                     {ownerImagePreview ? (
                                                         <>
-                                                            <img src={ownerImagePreview} className="w-full h-full object-cover" alt="Profilkép" />
+                                                            <Image src={ownerImagePreview} fill sizes="96px" className="w-full h-full object-cover" alt="Profilkép" />
                                                             <button
                                                                 type="button"
                                                                 onClick={() => { setOwnerImage(null); setOwnerImagePreview(null) }}
@@ -948,7 +967,7 @@ export function SalonWizard({ isOpen, onClose, onSuccess }: SalonWizardProps) {
                                                     <div className="flex gap-4">
                                                         <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0">
                                                             {member.imagePreview ? (
-                                                                <img src={member.imagePreview} className="w-full h-full object-cover" alt={member.name} />
+                                                                <Image src={member.imagePreview} fill sizes="80px" className="w-full h-full object-cover" alt={member.name} />
                                                             ) : (
                                                                 <label className="w-full h-full flex items-center justify-center cursor-pointer bg-gray-100">
                                                                     <ImagePlus className="h-6 w-6 text-gray-400" />

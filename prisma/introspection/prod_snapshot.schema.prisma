@@ -1,0 +1,326 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  User              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Booking {
+  id        String   @id
+  date      DateTime
+  time      String
+  status    String   @default("pending")
+  userId    String
+  salonId   String
+  serviceId String
+  createdAt DateTime @default(now())
+  Salon     Salon    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  Service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id        String   @id
+  name      String   @unique
+  slug      String   @unique
+  icon      String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+model ClosedDate {
+  id      String @id
+  date    String
+  reason  String
+  salonId String
+  Salon   Salon  @relation(fields: [salonId], references: [id], onDelete: Cascade)
+}
+
+model Comment {
+  id        String   @id
+  content   String
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  Post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Favorite {
+  id      String @id
+  userId  String
+  salonId String
+  Salon   Salon  @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  User    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, salonId])
+}
+
+model Like {
+  id     String @id
+  userId String
+  postId String
+  Post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+model Message {
+  id                            String   @id
+  subject                       String?
+  content                       String
+  senderId                      String
+  receiverId                    String
+  isRead                        Boolean  @default(false)
+  createdAt                     DateTime @default(now())
+  salonId                       String?
+  User_Message_receiverIdToUser User     @relation("Message_receiverIdToUser", fields: [receiverId], references: [id], onDelete: Cascade)
+  Salon                         Salon?   @relation(fields: [salonId], references: [id])
+  User_Message_senderIdToUser   User     @relation("Message_senderIdToUser", fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model OpeningHour {
+  id      String  @id
+  day     String
+  open    String?
+  close   String?
+  isOpen  Boolean @default(true)
+  salonId String
+  Salon   Salon   @relation(fields: [salonId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id      String   @id
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+}
+
+model Post {
+  id            String    @id
+  content       String
+  images        String[]
+  salonId       String
+  isActive      Boolean   @default(true)
+  inactivatedAt DateTime?
+  createdAt     DateTime  @default(now())
+  layout        String    @default("grid")
+  videos        String[]
+  Comment       Comment[]
+  Like          Like[]
+  Salon         Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id        String   @id
+  rating    Int
+  comment   String
+  userId    String
+  salonId   String
+  createdAt DateTime @default(now())
+  Salon     Salon    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Salon {
+  id                 String        @id
+  name               String
+  country            String        @default("Magyarország")
+  city               String
+  district           String?
+  street             String?
+  houseNumber        String?
+  floor              String?
+  door               String?
+  zipCode            String?
+  address            String
+  categories         String[]
+  currency           String        @default("HUF")
+  description        String?
+  rating             Float         @default(0)
+  reviewCount        Int           @default(0)
+  images             String[]
+  profileImage       String?
+  coverImage         String?
+  email              String?
+  phone              String?
+  website            String?
+  ownerId            String
+  languages          String[]
+  lat                Float?
+  lng                Float?
+  isActive           Boolean       @default(true)
+  inactivatedAt      DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime
+  ownerName          String?
+  ownerImage         String?
+  aboutMe            String?
+  isTeam             Boolean       @default(false)
+  allowBookings      Boolean       @default(true)
+  allowMessages      Boolean       @default(true)
+  notifyMonthlyStats Boolean       @default(true)
+  notifyNewBooking   Boolean       @default(true)
+  notifyNewFavorite  Boolean       @default(false)
+  notifyNewMessage   Boolean       @default(true)
+  notifyNewReview    Boolean       @default(true)
+  notifyPostComment  Boolean       @default(true)
+  notifyPostLike     Boolean       @default(false)
+  notifyWeeklyStats  Boolean       @default(true)
+  showEmailOnProfile Boolean       @default(false)
+  showPhoneOnProfile Boolean       @default(true)
+  salonFingerprint   String?       @unique
+  slug               String        @unique
+  Booking            Booking[]
+  ClosedDate         ClosedDate[]
+  Favorite           Favorite[]
+  Message            Message[]
+  OpeningHour        OpeningHour[]
+  Post               Post[]
+  Review             Review[]
+  User               User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  Service            Service[]
+  Subscription       Subscription?
+  TeamMember         TeamMember[]
+}
+
+model Service {
+  id          String    @id
+  name        String
+  price       String
+  duration    String
+  description String?
+  salonId     String
+  Booking     Booking[]
+  Salon       Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id           String   @id
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id                   String             @id
+  salonId              String             @unique
+  plan                 SubscriptionPlan   @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  billingCurrency      String             @default("HUF")
+  stripeCustomerId     String?
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  freeStartedAt        DateTime           @default(now())
+  freeExpiresAt        DateTime?
+  postWindowStart      DateTime           @default(now())
+  postCountInWindow    Int                @default(0)
+  scheduledPlan        SubscriptionPlan?
+  scheduledPlanAt      DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  cancelledAt          DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime
+  Salon                Salon              @relation(fields: [salonId], references: [id], onDelete: Cascade)
+}
+
+model SubscriptionConfig {
+  id                   String   @id
+  freeTrialDays        Int      @default(60)
+  freeMonthlyPostLimit Int      @default(5)
+  standardPriceHufId   String?
+  standardPriceEurId   String?
+  premiumPriceHufId    String?
+  premiumPriceEurId    String?
+  stripePublishableKey String?
+  stripeSecretKey      String?
+  stripeWebhookSecret  String?
+  updatedAt            DateTime
+  updatedBy            String?
+}
+
+model TeamMember {
+  id          String   @id
+  name        String
+  role        String?
+  description String?
+  image       String?
+  order       Int      @default(0)
+  salonId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  Salon       Salon    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id                               String     @id
+  name                             String?
+  email                            String?    @unique
+  emailVerified                    DateTime?
+  image                            String?
+  password                         String?
+  role                             String     @default("visitor")
+  isActive                         Boolean    @default(true)
+  inactivatedAt                    DateTime?
+  updatedAt                        DateTime
+  createdAt                        DateTime   @default(now())
+  Account                          Account[]
+  Booking                          Booking[]
+  Comment                          Comment[]
+  Favorite                         Favorite[]
+  Like                             Like[]
+  Message_Message_receiverIdToUser Message[]  @relation("Message_receiverIdToUser")
+  Message_Message_senderIdToUser   Message[]  @relation("Message_senderIdToUser")
+  Review                           Review[]
+  Salon                            Salon[]
+  Session                          Session[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum SubscriptionPlan {
+  FREE
+  STANDARD
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  PAST_DUE
+  CANCELLED
+}

@@ -33,11 +33,12 @@ export function HoursModal({ isOpen, onClose, onSave, hours }: HoursModalProps) 
 
     useEffect(() => {
         if (isOpen) {
-            setEditingHours([...hours])
+            const timer = window.setTimeout(() => setEditingHours([...hours]), 0)
+            return () => window.clearTimeout(timer)
         }
     }, [hours, isOpen])
 
-    const updateHourField = (day: string, field: keyof OpeningHour, value: any) => {
+    const updateHourField = (day: string, field: keyof OpeningHour, value: string | boolean) => {
         setEditingHours(editingHours.map(h =>
             h.day === day ? { ...h, [field]: value } : h
         ))

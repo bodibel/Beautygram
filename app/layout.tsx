@@ -37,9 +37,9 @@ const foitScript = `
   (function() {
     try {
       var stored = localStorage.getItem('glowyspot-theme');
-      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      var isDark = stored === 'dark' || (!stored && prefersDark);
+      var isDark = stored === 'dark';
       if (isDark) document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
     } catch(e) {}
   })();
 `;

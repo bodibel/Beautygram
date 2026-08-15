@@ -1,257 +1,171 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { MainLayout } from "@/components/layout/main-layout"
-import { FeedCard } from "@/components/home/feed-card"
-import { StoryBar } from "@/components/home/story-bar"
-import { HeroBanner } from "@/components/home/hero-banner"
-import { getCategories } from "@/lib/actions/category"
-import {
-  Scissors,
-  Sparkles,
-  Hand,
-  User,
-  Palette,
-  Waves,
-  Smile,
-  Search
-} from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import { Eye, Hand, Scissors, Search, Sparkles, Wand2 } from "lucide-react"
 
-// Icon mapping lookup
-const ICON_MAP: Record<string, any> = {
-  Scissors,
-  Sparkles,
-  Hand,
-  User,
-  Palette,
-  Waves,
-  Smile,
-}
-import { getRecentPosts, updatePost, toggleLike } from "@/lib/actions/salon"
-import { Button } from "@/components/ui/button"
+import { AvailabilityTeaser } from "@/components/inspiration/availability-teaser"
+import { BeforeAfterTeaser } from "@/components/inspiration/before-after-teaser"
+import { CategoryCard } from "@/components/inspiration/category-card"
+import { EditorialRail } from "@/components/inspiration/editorial-rail"
+import { InspirationHero } from "@/components/inspiration/inspiration-hero"
+import { LookCard, type LookCardData } from "@/components/inspiration/look-card"
+import { StudioCard, type StudioCardData } from "@/components/inspiration/studio-card"
+import { PublicDiscoveryLayout } from "@/components/layout/public-discovery-layout"
+import { getAllSalons, getRecentPosts } from "@/lib/actions/salon"
 import { useFilter } from "@/lib/filter-context"
-import { useAuth } from "@/lib/auth-context"
-import { PostModal } from "@/components/salon/modals/PostModal"
-import { toast } from "sonner"
+
+type RawRecentPost = Awaited<ReturnType<typeof getRecentPosts>>[number]
+type RawSalon = Awaited<ReturnType<typeof getAllSalons>>[number]
+
+const categories = [
+  { label: "Köröm", description: "Manikűr, géllakk, díszítés", href: "/providers", icon: Hand },
+  { label: "Haj", description: "Vágás, festés, styling", href: "/providers", icon: Scissors },
+  { label: "Szemöldök", description: "Formázás és festés", href: "/providers", icon: Eye },
+  { label: "Szempilla", description: "Lifting, dúsítás, hosszabbítás", href: "/providers", icon: Sparkles },
+  { label: "Barber", description: "Precíz vágás és ápolás", href: "/providers", icon: Scissors },
+  { label: "Arckezelés", description: "Kezelések és ragyogás", href: "/providers", icon: Wand2 },
+]
+
+function firstImage(images?: string[] | null) {
+  return images && images.length > 0 ? images[0] : null
+}
+
+function lookTitle(post: RawRecentPost) {
+  const content = post.content?.trim()
+  if (!content) return "Portfólió munka"
+  return content.length > 92 ? `${content.slice(0, 89)}...` : content
+}
+
+function toLook(post: RawRecentPost): LookCardData {
+  return {
+    id: post.id,
+    image: firstImage(post.images),
+    title: lookTitle(post),
+    salonName: post.salon.name,
+    salonSlug: post.salon.slug,
+    category: post.salon.categories?.[0],
+    rating: post.salon.rating,
+    likes: post._count?.likes || 0,
+    comments: post._count?.comments || 0,
+  }
+}
+
+function toStudio(salon: RawSalon): StudioCardData {
+  return {
+    id: salon.id,
+    name: salon.name,
+    slug: salon.slug,
+    image: salon.coverImage || firstImage(salon.images) || salon.profileImage,
+    profileImage: salon.profileImage,
+    city: salon.city,
+    category: salon.categories?.[0],
+    rating: salon.rating,
+    reviewCount: salon.reviewCount,
+    allowBookings: salon.allowBookings,
+  }
+}
 
 export default function Home() {
-  const { userData } = useAuth()
-  const { location, filters, addServiceFilter, removeServiceFilter } = useFilter()
-  const [posts, setPosts] = useState<any[]>([])
+  const { location, filters } = useFilter()
+  const [looks, setLooks] = useState<LookCardData[]>([])
+  const [studios, setStudios] = useState<StudioCardData[]>([])
   const [loading, setLoading] = useState(true)
-  const [categories, setCategories] = useState<any[]>([])
 
-  // Edit Post State
-  const [isPostModalOpen, setIsPostModalOpen] = useState(false)
-  const [editingPost, setEditingPost] = useState<any>(null)
-
-  const handleEditPost = (post: any) => {
-    setEditingPost(post)
-    setIsPostModalOpen(true)
-  }
-
-  const handleSavePost = async (content: string, imageUrls: string[], layout: string) => {
-    try {
-      if (editingPost) {
-        await updatePost(editingPost.id, { content, images: imageUrls, layout })
-        setPosts(posts.map(p => p.id === editingPost.id ? { ...p, content, images: imageUrls, layout } : p))
-        toast.success("Bejegyzés frissítve!")
-      }
-      setIsPostModalOpen(false)
-      setEditingPost(null)
-    } catch (error) {
-      console.error("Error saving post:", error)
-      toast.error("Hiba történt a mentés során!")
-    }
-  }
-
-  const handleToggleLike = async (postId: string) => {
-    if (!userData) {
-      toast.error("Be kell jelentkezned a kedveléshez!")
-      return
-    }
-    try {
-      await toggleLike(postId, userData.id)
-    } catch (error) {
-      console.error("Error toggling like:", error)
-      toast.error("Hiba történt!")
-    }
-  }
-
-  useEffect(() => {
-    const loadCategories = async () => {
-      const fetched = await getCategories()
-      setCategories(fetched)
-    }
-    loadCategories()
-  }, [])
-
-  // Pagination State
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-  const [isFetchingMore, setIsFetchingMore] = useState(false)
-
-  useEffect(() => {
-    setPage(1)
-    loadInitialData()
-  }, [location.lat, location.lng, location.radius, filters.services])
-
-  // Infinite Scroll Observer
-  useEffect(() => {
-    if (!hasMore || isFetchingMore) return
-
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting) {
-          loadMorePosts()
-        }
-      },
-      { threshold: 0.1, rootMargin: "200px" }
-    )
-
-    const sentinel = document.getElementById("scroll-sentinel")
-    if (sentinel) observer.observe(sentinel)
-
-    return () => observer.disconnect()
-  }, [hasMore, isFetchingMore, posts])
-
-  const loadInitialData = async () => {
+  const loadInspirationData = useCallback(async () => {
     try {
       setLoading(true)
-      const recentPosts = await getRecentPosts(1, {
-        lat: location.lat,
-        lng: location.lng,
-        radius: location.radius,
-        categories: filters.services
-      }, userData?.id)
-      setPosts(formatPosts(recentPosts))
-      setHasMore(recentPosts.length === 20)
+      const [recentPosts, salons] = await Promise.all([
+        getRecentPosts(1, {
+          lat: location.lat,
+          lng: location.lng,
+          radius: location.radius,
+          categories: filters.services,
+        }),
+        getAllSalons(),
+      ])
+
+      setLooks(recentPosts.map(toLook).filter((look) => Boolean(look.image)).slice(0, 10))
+      setStudios(salons.map(toStudio).slice(0, 10))
     } catch (error) {
-      console.error("Error loading data:", error)
+      console.error("Error loading inspiration homepage:", error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters.services, location.lat, location.lng, location.radius])
 
-  const loadMorePosts = async () => {
-    setIsFetchingMore(true)
-    const nextPage = page + 1
-    try {
-      const newPosts = await getRecentPosts(nextPage, {
-        lat: location.lat,
-        lng: location.lng,
-        radius: location.radius,
-        categories: filters.services
-      }, userData?.id)
-      if (newPosts.length === 0) {
-        setHasMore(false)
-      } else {
-        setPosts(prev => [...prev, ...formatPosts(newPosts)])
-        setPage(nextPage)
-        setHasMore(newPosts.length === 20)
-      }
-    } catch (error) {
-      console.error("Error loading more posts:", error)
-    } finally {
-      setIsFetchingMore(false)
-    }
-  }
-
-  const formatPosts = (rawPosts: any[]) => {
-    return rawPosts.map(p => {
-      const prices = p.salon.services?.map((s: any) => s.price) || []
-      const minPrice = prices.length > 0 ? Math.min(...prices) : 0
-
-      return {
-        id: p.id,
-        author: {
-          id: p.salon.id,
-          name: p.salon.name,
-          ownerId: p.salon.ownerId,
-          avatar: p.salon.profileImage || p.salon.images?.[0] || "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80",
-          role: p.salon.categories?.[0] || "Szolgáltató",
-          currency: p.salon.currency || "HUF",
-          minPrice: minPrice,
-          rating: p.salon.rating || 0,
-          reviewCount: p.salon.reviewCount || 0
-        },
-        isLiked: p.isLiked,
-        images: p.images,
-        layout: p.layout,
-        content: p.content,
-        likes: p._count?.likes || 0,
-        comments: p._count?.comments || 0,
-        createdAt: new Date(p.createdAt)
-      }
-    })
-  }
-
-  const toggleCategory = (category: string) => {
-    // This now syncs with the global filter context
-  }
+  useEffect(() => {
+    loadInspirationData()
+  }, [loadInspirationData])
 
   return (
-    <MainLayout>
-      <div className="space-y-6 pb-10 w-full">
-        {/* Featured Salons Bar */}
-        <div className="sticky top-16 z-30">
-          <div className="py-2">
-            <div className="rounded-2xl bg-surface px-5 py-4 shadow-sm border border-border">
-              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Kiemelt szalonok</p>
-              <StoryBar />
-            </div>
-          </div>
-        </div>
+    <PublicDiscoveryLayout flushTop>
+      <div className="space-y-12 pb-8 sm:space-y-16">
+        <InspirationHero image="/images/hero/search-hero-beauty.png" />
 
-        {/* Recent Works Header */}
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-xl font-bold font-serif text-foreground">Legújabb Bejegyzések</h2>
-        </div>
-
-        {/* Feed */}
-        <div className="space-y-8">
-          {posts.map((post) => (
-            <FeedCard
-              key={post.id}
-              post={post}
-              isOwner={userData?.id === post.author.ownerId}
-              onEdit={handleEditPost}
-              onLike={handleToggleLike}
-            />
+        <EditorialRail
+          title="Népszerű most"
+          description="Indulj egy szolgáltatási hangulatból, majd szűkíts megbízható szalonokra és inspiráló munkákra."
+          href="/providers"
+          actionLabel="Felfedezés"
+        >
+          {categories.map((category) => (
+            <CategoryCard key={category.label} {...category} />
           ))}
+        </EditorialRail>
 
-          {/* Scroll Sentinel / Loading States */}
-          {loading && posts.length === 0 && (
-            <div className="space-y-8">
-              {[1, 2, 3].map(i => <div key={i} className="aspect-[4/5] w-full rounded-3xl bg-gray-100 animate-pulse" />)}
+        <EditorialRail
+          title="Kiemelt munkák"
+          description="Valós munkák GlowySpot szalonoktól, inspirációként megmutatva, nem közösségi posztként."
+          href="/providers"
+          actionLabel="Felfedezés"
+        >
+          {loading && looks.length === 0
+            ? [1, 2, 3].map((item) => (
+                <div key={item} className="h-[420px] w-[268px] shrink-0 animate-pulse rounded-[28px] bg-surface-muted sm:w-[320px]" />
+              ))
+            : looks.map((look) => <LookCard key={look.id} look={look} />)}
+          {!loading && looks.length === 0 && (
+            <div className="w-[300px] rounded-[28px] border border-border-subtle bg-surface p-6 text-sm leading-6 text-text-secondary shadow-soft">
+              Itt jelennek meg a munkák, amikor a szalonok portfólióképeket töltenek fel.
             </div>
           )}
+        </EditorialRail>
 
-          {hasMore && posts.length > 0 && (
-            <div id="scroll-sentinel" className="h-10 flex justify-center items-center">
-              {isFetchingMore && <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />}
+        <EditorialRail
+          title="Kiemelt szalonok"
+          description="Böngészd az aktív szalonokat, és nyisd meg a profilt, ha egy stílus közel áll hozzád."
+          href="/providers"
+          actionLabel="Szalonok"
+        >
+          {loading && studios.length === 0
+            ? [1, 2, 3].map((item) => (
+                <div key={item} className="h-[310px] w-[284px] shrink-0 animate-pulse rounded-[28px] bg-surface-muted sm:w-[340px]" />
+              ))
+            : studios.map((studio) => <StudioCard key={studio.id} studio={studio} />)}
+          {!loading && studios.length === 0 && (
+            <div className="w-[300px] rounded-[28px] border border-border-subtle bg-surface p-6 text-sm leading-6 text-text-secondary shadow-soft">
+              Itt jelennek meg a szalonok, amikor aktív szalonadat érhető el.
             </div>
           )}
+        </EditorialRail>
 
-          {!hasMore && posts.length > 0 && (
-            <div className="text-center py-8">
-              <p className="text-sm text-gray-400 font-medium">You've reached the end of elegance</p>
-            </div>
-          )}
-        </div>
+        <AvailabilityTeaser />
+        <BeforeAfterTeaser />
+
+        <section className="rounded-[32px] border border-border-subtle bg-surface p-6 text-center shadow-soft sm:p-8">
+          <Search className="mx-auto h-6 w-6 text-accent-primary" />
+          <h2 className="mt-3 font-serif text-3xl font-semibold text-text-primary">Készen állsz szűkíteni a keresést?</h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-text-secondary">
+            Böngészd a meglévő szalonkatalógust, amíg a teljes prémium keresési és térképes élmény készül.
+          </p>
+          <a
+            href="/providers"
+            className="mt-5 inline-flex min-h-[44px] items-center justify-center rounded-full bg-accent-primary px-6 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover"
+          >
+            Szalon keresése
+          </a>
+        </section>
       </div>
-      <PostModal
-        isOpen={isPostModalOpen}
-        onClose={() => {
-          setIsPostModalOpen(false)
-          setEditingPost(null)
-        }}
-        onSave={handleSavePost}
-        initialContent={editingPost?.content}
-        initialImages={editingPost?.images}
-        initialLayout={editingPost?.layout}
-        isEditing={!!editingPost}
-      />
-    </MainLayout>
+    </PublicDiscoveryLayout>
   )
 }

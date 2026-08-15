@@ -5,8 +5,8 @@ import { MainLayout } from "@/components/layout/main-layout"
 
 export default function AdminProvidersPage() {
     return (
-        <MainLayout>
-            <div className="container mx-auto p-6">
+        <MainLayout showRightSidebar={false} fullWidth>
+            <div className="w-full p-6">
                 <UserManager 
                     filterRole="provider" 
                     title="Szolgáltatók" 

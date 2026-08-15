@@ -69,9 +69,14 @@ model User {
   messagesReceived Message[] @relation("ReceivedMessages")
   comments      Comment[]
   likes         Like[]
+  commentLikes  CommentLike[]
   favorites     Favorite[]
+  auditLogs     AuditLog[]
   isActive      Boolean   @default(true)
   inactivatedAt DateTime?
+  // Ki inaktiválta a fiókot: "self" (felhasználó saját maga) vagy "admin" (adminisztrátori tiltás).
+  // Csak a "self" eset állítható vissza automatikusan bejelentkezéskor.
+  deactivatedBy String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -346,7 +351,19 @@ model Comment {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   postId    String
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  likes     CommentLike[]
   createdAt DateTime @default(now())
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, commentId])
 }
 
 model Like {
@@ -391,4 +408,23 @@ model Category {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ─── Audit ────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String?
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([userId, createdAt])
+  @@index([entity, entityId, createdAt])
 }

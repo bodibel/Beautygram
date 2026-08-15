@@ -1,29 +1,38 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 import { MainLayout } from "@/components/layout/main-layout"
 import { ProviderCard } from "@/components/home/provider-card"
+import { Button } from "@/components/ui/button"
 import { getUserFavorites } from "@/lib/actions/salon"
 import { useAuth } from "@/lib/auth-context"
 import { Heart, Sparkles } from "lucide-react"
 
+type FavoriteProvider = {
+    id: string
+    name: string
+    category: string
+    rating: number
+    reviewCount: number
+    location: string
+    image: string
+    avatar: string
+    languages?: string[]
+    slug: string
+}
+
 export default function FavoritesPage() {
     const { userData } = useAuth()
-    const [favorites, setFavorites] = useState<any[]>([])
+    const [favorites, setFavorites] = useState<FavoriteProvider[]>([])
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        if (userData?.id) {
-            loadFavorites()
-        } else if (userData === null) {
-            setLoading(false)
-        }
-    }, [userData?.id])
+    const loadFavorites = useCallback(async () => {
+        if (!userData?.id) return
 
-    const loadFavorites = async () => {
         try {
-            const data = await getUserFavorites(userData!.id)
-            setFavorites(data.map((fav: any) => ({
+            const data = await getUserFavorites(userData.id)
+            setFavorites(data.map((fav): FavoriteProvider => ({
                 id: fav.salon.id,
                 name: fav.salon.name,
                 category: fav.salon.categories?.[0] || "Egyéb",
@@ -40,12 +49,20 @@ export default function FavoritesPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [userData?.id])
+
+    useEffect(() => {
+        if (userData?.id) {
+            loadFavorites()
+        } else if (userData === null) {
+            setLoading(false)
+        }
+    }, [loadFavorites, userData])
 
     if (loading) {
         return (
-            <MainLayout>
-                <div className="container mx-auto p-4 md:p-8 max-w-7xl">
+            <MainLayout showRightSidebar={false} fullWidth>
+                <div className="mx-auto w-full max-w-6xl space-y-6 px-2 py-2 sm:px-0">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                             <Heart className="h-6 w-6 fill-primary" />
@@ -64,7 +81,7 @@ export default function FavoritesPage() {
 
     if (!userData) {
         return (
-            <MainLayout>
+            <MainLayout showRightSidebar={false} fullWidth>
                 <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
                     <div className="text-center max-w-md mx-auto">
                         <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -74,6 +91,9 @@ export default function FavoritesPage() {
                         <p className="text-gray-500 font-medium leading-relaxed">
                             Jelentkezz be, hogy láthasd a kedvenc szolgáltatóidat és egyszerűen foglalhass időpontot.
                         </p>
+                        <Button asChild className="mt-6 rounded-full px-6 font-bold">
+                            <Link href="/providers">Szalonok felfedezése</Link>
+                        </Button>
                     </div>
                 </div>
             </MainLayout>
@@ -81,8 +101,8 @@ export default function FavoritesPage() {
     }
 
     return (
-        <MainLayout>
-            <div className="container mx-auto p-4 md:p-8 max-w-7xl min-h-screen">
+        <MainLayout showRightSidebar={false} fullWidth>
+            <div className="mx-auto w-full max-w-6xl space-y-6 px-2 py-2 sm:px-0">
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                         <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-accent-warm flex items-center justify-center shadow-lg shadow-primary/20">
@@ -106,8 +126,11 @@ export default function FavoritesPage() {
                         </div>
                         <h2 className="text-xl font-black mb-2 text-gray-900">Még nincs kedvenc szolgáltatód</h2>
                         <p className="text-gray-500 font-medium max-w-sm mx-auto">
-                            fedezd fel a legjobb szalonokat és mentsd el őket a szívecske ikonnal!
+                            Fedezd fel a legjobb szalonokat és mentsd el őket a szívecske ikonnal!
                         </p>
+                        <Button asChild className="mt-6 rounded-full px-6 font-bold">
+                            <Link href="/providers">Szalonok felfedezése</Link>
+                        </Button>
                     </div>
                 ) : (
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 pb-10 max-w-5xl">

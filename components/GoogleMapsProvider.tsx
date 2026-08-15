@@ -1,12 +1,12 @@
 "use client"
 
 import { useLoadScript } from "@react-google-maps/api"
-import { ReactNode, useMemo } from "react"
+import { ReactNode } from "react"
 
 const MAP_LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"]
 
 export function GoogleMapsProvider({ children }: { children: ReactNode }) {
-    const { isLoaded, loadError } = useLoadScript({
+    const { loadError } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string,
         libraries: MAP_LIBRARIES,
     })

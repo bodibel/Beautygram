@@ -1,75 +1,54 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Home, Search, Heart, User, Plus } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useAuth } from "@/lib/auth-context"
+import { useParams, usePathname } from "next/navigation"
 
-const navItems = [
-  { href: "/", label: "Feed", icon: Home },
-  { href: "/providers", label: "Keresés", icon: Search },
-  null, // center slot for floating button
-  { href: "/dashboard/favorites", label: "Kedvencek", icon: Heart },
-  { href: "/profile/me", label: "Profil", icon: User },
-]
+import {
+  getDashboardBottomLinks,
+  getDashboardSalonBottomLinks,
+  getSalonBottomLinks,
+  isNavActive,
+} from "@/lib/navigation-config"
+import { cn } from "@/lib/utils"
 
 export function BottomNav() {
   const pathname = usePathname()
-  const { user } = useAuth()
+  const params = useParams()
+  const legacySalonId = typeof params.id === "string" ? params.id : undefined
+  const dashboardSalonId = typeof params.salonId === "string" ? params.salonId : undefined
+  const isLegacySalonContext = pathname.startsWith("/salon/") && legacySalonId
+  const isDashboardSalonContext = pathname.startsWith("/dashboard/salons/") && dashboardSalonId
+
+  const navItems = isDashboardSalonContext
+    ? getDashboardSalonBottomLinks(dashboardSalonId)
+    : isLegacySalonContext
+      ? getSalonBottomLinks(legacySalonId)
+      : getDashboardBottomLinks()
 
   return (
     <nav
-      className="glass fixed inset-x-0 bottom-0 flex h-16 items-center justify-around rounded-none border-t border-border md:hidden"
+      className="fixed inset-x-0 bottom-0 flex min-h-16 items-center justify-around border-t border-border-subtle bg-surface/95 px-2 pt-2 shadow-[0_-12px_40px_rgba(48,36,30,0.08)] backdrop-blur md:hidden"
       style={{
         zIndex: "var(--z-bottom-nav)",
-        paddingBottom: "env(safe-area-inset-bottom)",
+        paddingBottom: "max(env(safe-area-inset-bottom), 0.5rem)",
       }}
     >
       {navItems.map((item) => {
-        if (!item) {
-          // Center floating button: create post for logged-in users, search for guests
-          if (user) {
-            return (
-              <Link
-                key="center"
-                href="/salon"
-                className="relative -mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent-warm text-white shadow-lg shadow-primary/30 ring-4 ring-background transition-transform active:scale-95"
-                aria-label="Új bejegyzés létrehozása"
-              >
-                <Plus className="h-6 w-6" strokeWidth={2.5} />
-              </Link>
-            )
-          }
-          return (
-            <Link
-              key="center"
-              href="/providers"
-              className="relative -mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent-warm text-white shadow-lg shadow-primary/30 ring-4 ring-background transition-transform active:scale-95"
-              aria-label="Keresés"
-            >
-              <Search className="h-6 w-6" strokeWidth={2.5} />
-            </Link>
-          )
-        }
-
         const Icon = item.icon
-        const isActive = item.href === "/"
-          ? pathname === "/"
-          : pathname.startsWith(item.href)
+        const isActive = isNavActive(pathname, item)
 
         return (
           <Link
             key={item.href}
-            href={item.href}
+            href={item.href!}
             className={cn(
-              "flex flex-col items-center gap-0.5 px-3 py-2 transition-colors min-w-[44px] min-h-[44px] justify-center",
-              isActive ? "text-primary" : "text-muted-foreground"
+              "flex min-h-11 min-w-12 flex-col items-center justify-center gap-0.5 rounded-2xl px-2 text-center transition-colors",
+              isActive ? "text-accent-primary" : "text-text-secondary"
             )}
             aria-label={item.label}
           >
             <Icon className={cn("h-5 w-5", isActive && "stroke-[2.5px]")} />
-            <span className="text-[10px] font-medium">{item.label}</span>
+            <span className="text-[10px] font-bold leading-tight">{item.label}</span>
           </Link>
         )
       })}

@@ -1,12 +1,27 @@
 "use client"
 
-import { Clock, MapPin, ChevronRight, Star, Sparkles, Phone, Mail } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Clock, MapPin, Phone, Mail } from "lucide-react"
 import { GoogleMap } from "@react-google-maps/api"
 import { AdvancedMarker } from "@/components/ui/advanced-marker"
 
 interface ProfileSidebarProps {
-    salon: any
+    salon: {
+        phone?: string | null
+        email?: string | null
+        showPhoneOnProfile?: boolean
+        showEmailOnProfile?: boolean
+        services?: unknown[]
+        openingHours?: Array<{
+            day: string
+            isOpen: boolean
+            open?: string | null
+            close?: string | null
+        }>
+        lat?: number | null
+        lng?: number | null
+        city?: string | null
+        address?: string | null
+    }
 }
 
 const DAY_LABELS: Record<string, string> = {
@@ -20,7 +35,6 @@ const DAY_LABELS: Record<string, string> = {
 }
 
 export function ProfileSidebar({ salon }: ProfileSidebarProps) {
-    const featuredServices = salon.services?.slice(0, 3) || []
     const openingHours = salon.openingHours || []
 
     // Check if contact info should be shown
@@ -79,7 +93,7 @@ export function ProfileSidebar({ salon }: ProfileSidebarProps) {
                 </div>
                 <div className="space-y-2">
                     {openingHours.length > 0 ? (
-                        openingHours.map((hour: any) => (
+                        openingHours.map((hour) => (
                             <div key={hour.day} className="flex justify-between text-sm">
                                 <span className="text-gray-500">{DAY_LABELS[hour.day] || hour.day}</span>
                                 {hour.isOpen ? (

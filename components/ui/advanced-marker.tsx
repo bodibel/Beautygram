@@ -41,13 +41,13 @@ export function AdvancedMarker({ position, draggable, onDragEnd }: AdvancedMarke
             marker.map = null
             markerRef.current = null
         }
-    }, [map, markerLibReady])
+    }, [draggable, map, markerLibReady, onDragEnd, position])
 
     useEffect(() => {
         if (markerRef.current) {
             markerRef.current.position = position
         }
-    }, [position.lat, position.lng])
+    }, [position])
 
     useEffect(() => {
         if (markerRef.current) {

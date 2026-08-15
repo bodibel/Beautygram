@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useTransition } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Star } from "lucide-react"
@@ -22,9 +22,10 @@ export function StoryBar() {
     const { location, filters } = useFilter()
     const [salons, setSalons] = useState<FeaturedSalon[]>([])
     const [loading, setLoading] = useState(true)
+    const [, startTransition] = useTransition()
 
     useEffect(() => {
-        setLoading(true)
+        startTransition(() => setLoading(true))
         getFeaturedSalons({
             city: location.city || undefined,
             services: filters.services.length > 0 ? filters.services : undefined,

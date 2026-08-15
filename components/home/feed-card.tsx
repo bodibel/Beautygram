@@ -2,37 +2,40 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { Heart, MessageCircle, Share2, Star, Pencil, LayoutGrid, ChevronLeft, ChevronRight } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { hu } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { PostDetailModal } from "./post-detail-modal"
+import { SafeImage } from "@/components/ui/safe-image"
+
+type FeedCardPost = {
+    id: string
+    author: {
+        id: string
+        name: string
+        ownerId?: string
+        avatar: string
+        role: string
+        slug: string
+        currency?: string
+        minPrice?: number
+        rating?: number
+        reviewCount?: number
+    }
+    images: string[]
+    layout?: string
+    content: string
+    likes: number
+    comments: number
+    isLiked?: boolean
+    createdAt: Date
+}
 
 interface FeedCardProps {
-    post: {
-        id: string
-        author: {
-            id: string
-            name: string
-            avatar: string
-            role: string
-            slug: string
-            currency?: string
-            minPrice?: number
-            rating?: number
-            reviewCount?: number
-        }
-        images: string[]
-        layout?: string
-        content: string
-        likes: number
-        comments: number
-        isLiked?: boolean
-        createdAt: Date
-    }
+    post: FeedCardPost
     isOwner?: boolean
-    onEdit?: (post: any) => void
+    onEdit?: (post: FeedCardPost) => void
     onLike?: (postId: string) => void
 }
 
@@ -57,7 +60,7 @@ export function FeedCard({ post, isOwner, onEdit, onLike }: FeedCardProps) {
         if (layout === "carousel") {
             return (
                 <div className="relative aspect-[4/3] w-full group/carousel">
-                    <Image
+                    <SafeImage
                         src={images[currentImageIndex]}
                         alt={post.content}
                         fill
@@ -111,14 +114,14 @@ export function FeedCard({ post, isOwner, onEdit, onLike }: FeedCardProps) {
             return (
                 <div className="grid grid-cols-2 gap-0.5 aspect-[4/3] overflow-hidden">
                     <div className="relative h-full">
-                        <Image src={images[0]} alt="" fill className="object-cover" />
+                        <SafeImage src={images[0]} alt="" fill className="object-cover" sizes="(max-width: 640px) 50vw, 300px" />
                     </div>
                     <div className="grid grid-rows-2 gap-0.5">
                         <div className="relative h-full">
-                            <Image src={images[1]} alt="" fill className="object-cover" />
+                            <SafeImage src={images[1]} alt="" fill className="object-cover" sizes="(max-width: 640px) 50vw, 300px" />
                         </div>
                         <div className="relative h-full">
-                            <Image src={images[2]} alt="" fill className="object-cover" />
+                            <SafeImage src={images[2]} alt="" fill className="object-cover" sizes="(max-width: 640px) 50vw, 300px" />
                             {images.length > 3 && (
                                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
                                     <span className="text-white font-black text-xl">+{images.length - 3}</span>
@@ -135,7 +138,7 @@ export function FeedCard({ post, isOwner, onEdit, onLike }: FeedCardProps) {
                 <div className="flex flex-col gap-0.5">
                     {images.slice(0, 3).map((img, i) => (
                         <div key={i} className="relative aspect-[16/9] w-full">
-                            <Image src={img} alt="" fill className="object-cover" />
+                            <SafeImage src={img} alt="" fill className="object-cover" sizes="(max-width: 640px) 100vw, 600px" />
                         </div>
                     ))}
                 </div>
@@ -152,7 +155,7 @@ export function FeedCard({ post, isOwner, onEdit, onLike }: FeedCardProps) {
             )}>
                 {images.slice(0, 4).map((img, i) => (
                     <div key={i} className={cn("relative h-full", i === 0 && images.length === 3 && "row-span-2")}>
-                        <Image src={img} alt="" fill className="object-cover" />
+                        <SafeImage src={img} alt="" fill className="object-cover" sizes="(max-width: 640px) 50vw, 300px" />
                         {i === 3 && images.length > 4 && (
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
                                 <span className="text-white font-black text-xl">+{images.length - 4}</span>
@@ -210,11 +213,13 @@ export function FeedCard({ post, isOwner, onEdit, onLike }: FeedCardProps) {
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-white/60 shadow-md">
-                                <Image
+                                <SafeImage
                                     src={post.author.avatar}
                                     alt={post.author.name}
                                     fill
                                     className="object-cover"
+                                    sizes="40px"
+                                    fallbackSrc={`https://ui-avatars.com/api/?name=${encodeURIComponent(post.author.name)}&background=random`}
                                 />
                             </div>
                             <div className="min-w-0">

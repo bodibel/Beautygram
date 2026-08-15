@@ -6,8 +6,8 @@ import { CategoryManager } from "@/components/admin/CategoryManager"
 
 export default function AdminSettingsPage() {
     return (
-        <MainLayout>
-            <div className="container mx-auto p-6">
+        <MainLayout showRightSidebar={false} fullWidth>
+            <div className="w-full p-6">
                 <h1 className="text-3xl font-bold mb-6">Beállítások</h1>
                 <div className="grid gap-6">
                     <Card>

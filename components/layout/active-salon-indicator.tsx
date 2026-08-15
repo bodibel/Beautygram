@@ -5,7 +5,7 @@ import { useParams, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Store, ChevronRight } from "lucide-react"
 import { getSalonName } from "@/lib/actions/salon"
-import { cn } from "@/lib/utils"
+import Image from "next/image"
 
 export function ActiveSalonIndicator() {
     const params = useParams()
@@ -25,8 +25,6 @@ export function ActiveSalonIndicator() {
                 }
             }
             fetchSalonName()
-        } else {
-            setSalonData(null)
         }
     }, [salonId])
 
@@ -37,11 +35,13 @@ export function ActiveSalonIndicator() {
         <div className="px-4 sm:px-6 lg:px-8 pt-4">
             <div className="rounded-2xl bg-white/50 backdrop-blur-md border border-primary/10/50 p-3 shadow-sm flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                    <div className="relative h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner overflow-hidden">
                         {salonData.profileImage ? (
-                            <img
+                            <Image
                                 src={salonData.profileImage}
                                 alt={salonData.name}
+                                fill
+                                sizes="40px"
                                 className="h-full w-full object-cover rounded-xl"
                             />
                         ) : (

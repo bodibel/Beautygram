@@ -1,19 +1,34 @@
 "use client"
 
-import { use, useState } from "react"
+import { use } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
 import { useAuth } from "@/lib/auth-context"
 import { updateSalon } from "@/lib/actions/salon"
-import { useRouter } from "next/navigation"
 import { useSalonData } from "@/hooks/useSalonData"
 import { toast } from "sonner"
 
 import { ContactSettingsCard } from "@/components/salon/cards/ContactSettingsCard"
 
+type ContactSettingsData = {
+    phone?: string | null
+    email?: string | null
+    showPhoneOnProfile?: boolean
+    showEmailOnProfile?: boolean
+    allowMessages?: boolean
+    allowBookings?: boolean
+    notifyNewMessage?: boolean
+    notifyNewBooking?: boolean
+    notifyNewReview?: boolean
+    notifyNewFavorite?: boolean
+    notifyPostLike?: boolean
+    notifyPostComment?: boolean
+    notifyWeeklyStats?: boolean
+    notifyMonthlyStats?: boolean
+}
+
 export default function SalonContactPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params)
     const { userData } = useAuth()
-    const router = useRouter()
 
     const {
         salon,
@@ -21,10 +36,15 @@ export default function SalonContactPage({ params }: { params: Promise<{ id: str
         loading
     } = useSalonData(id, userData?.id)
 
-    const handleSaveContact = async (data: any) => {
+    const handleSaveContact = async (data: ContactSettingsData) => {
         try {
             await updateSalon(id, data)
-            setSalon({ ...salon!, ...data })
+            setSalon({
+                ...salon!,
+                ...data,
+                phone: data.phone || undefined,
+                email: data.email || undefined,
+            })
             toast.success("Beállítások sikeresen mentve!")
         } catch (error) {
             console.error("Error updating contact settings:", error)

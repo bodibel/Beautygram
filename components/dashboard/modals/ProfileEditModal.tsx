@@ -6,14 +6,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useState } from "react"
 import { updateProfile, inactivateAccount } from "@/lib/actions/user"
-import { useAuth } from "@/lib/auth-context"
 import { AlertTriangle, Trash2, Info, CheckCircle2 } from "lucide-react"
 import { signOut, useSession } from "next-auth/react"
+
+type EditableUser = {
+    id: string
+    name?: string | null
+    email?: string | null
+}
 
 interface ProfileEditModalProps {
     isOpen: boolean
     onClose: () => void
-    userData: any
+    userData: EditableUser
 }
 
 export function ProfileEditModal({ isOpen, onClose, userData }: ProfileEditModalProps) {

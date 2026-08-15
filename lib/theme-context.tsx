@@ -11,32 +11,46 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "system",
+  theme: "light",
   resolvedTheme: "light",
   setTheme: () => {},
 })
 
+function getStoredTheme(): Theme {
+  if (typeof window === "undefined") return "light"
+
+  const stored = localStorage.getItem("glowyspot-theme")
+  return stored === "light" || stored === "dark" || stored === "system" ? stored : "light"
+}
+
+function getSystemTheme(): "light" | "dark" {
+  if (typeof window === "undefined") return "light"
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("system")
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light")
+  const [theme, setThemeState] = useState<Theme>("light")
+  const [systemTheme, setSystemTheme] = useState<"light" | "dark">("light")
+  const [isHydrated, setIsHydrated] = useState(false)
+  const resolvedTheme = isHydrated ? (theme === "system" ? systemTheme : theme) : "light"
 
   useEffect(() => {
-    const stored = localStorage.getItem("glowyspot-theme") as Theme | null
-    if (stored) setThemeState(stored)
+    const hydrateTheme = setTimeout(() => {
+      setThemeState(getStoredTheme())
+      setSystemTheme(getSystemTheme())
+      setIsHydrated(true)
+    }, 0)
+
+    return () => clearTimeout(hydrateTheme)
   }, [])
 
   useEffect(() => {
+    if (!isHydrated) return
+
     const root = document.documentElement
-    let resolved: "light" | "dark"
 
-    if (theme === "system") {
-      resolved = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-    } else {
-      resolved = theme
-    }
-
-    setResolvedTheme(resolved)
-    if (resolved === "dark") {
+    if (resolvedTheme === "dark") {
       root.classList.add("dark")
     } else {
       root.classList.remove("dark")
@@ -47,24 +61,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } else {
       localStorage.removeItem("glowyspot-theme")
     }
-  }, [theme])
+  }, [isHydrated, theme, resolvedTheme])
 
-  // Also listen for system theme changes
   useEffect(() => {
-    if (theme !== "system") return
+    if (!isHydrated || theme !== "system") return
+
     const mq = window.matchMedia("(prefers-color-scheme: dark)")
-    const handler = (e: MediaQueryListEvent) => {
-      const resolved = e.matches ? "dark" : "light"
-      setResolvedTheme(resolved)
-      if (resolved === "dark") {
-        document.documentElement.classList.add("dark")
-      } else {
-        document.documentElement.classList.remove("dark")
-      }
-    }
+    const handler = (e: MediaQueryListEvent) => setSystemTheme(e.matches ? "dark" : "light")
+
     mq.addEventListener("change", handler)
     return () => mq.removeEventListener("change", handler)
-  }, [theme])
+  }, [isHydrated, theme])
 
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme: setThemeState }}>

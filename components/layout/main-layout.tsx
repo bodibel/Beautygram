@@ -1,10 +1,10 @@
 "use client"
 
-import { Sidebar } from "@/components/layout/sidebar"
-import { TopBar } from "@/components/layout/top-bar"
+import { ActiveSalonIndicator } from "@/components/layout/active-salon-indicator"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { RightSidebar } from "@/components/layout/right-sidebar"
-import { ActiveSalonIndicator } from "@/components/layout/active-salon-indicator"
+import { Sidebar } from "@/components/layout/sidebar"
+import { TopBar } from "@/components/layout/top-bar"
 import { cn } from "@/lib/utils"
 
 export function MainLayout({
@@ -17,39 +17,31 @@ export function MainLayout({
   fullWidth?: boolean
 }) {
   return (
-    <div className="min-h-screen bg-background">
-      {/* TopBar — sticky, full width, content within 1440px */}
+    <div className="min-h-screen overflow-x-hidden bg-background">
       <TopBar />
 
-      {/* 1440px container — three-column layout */}
-      <div className="mx-auto max-w-[1440px] flex items-start">
-
-        {/* Left sidebar — sticky within the 1440px container */}
+      <div className="mx-auto flex max-w-[1440px] flex-col items-stretch overflow-x-hidden px-4 pt-20 sm:px-6 lg:flex-row lg:items-start lg:px-8">
+        <div className="hidden w-[300px] flex-shrink-0 lg:block" aria-hidden="true" />
         <Sidebar />
 
-        {/* Center + Right — fills remaining space */}
-        <div className="flex-1 min-w-0 flex items-start gap-6 pl-6 py-5 pb-24 md:pb-8">
-
-          {/* Main feed */}
-          <main className={cn(
-            "w-full min-w-0",
-            fullWidth
-              ? "flex-1"
-              : showRightSidebar
-                ? "flex-shrink-0 lg:max-w-[480px] xl:max-w-[640px]"
-                : "max-w-[680px] mx-auto flex-shrink-0"
-          )}>
+        <div className="flex w-full min-w-0 flex-1 items-start gap-6 pb-24 md:pb-8 lg:pl-6">
+          <main
+            className={cn(
+              "w-full min-w-0",
+              fullWidth
+                ? "flex-1"
+                : showRightSidebar
+                  ? "lg:flex-shrink-0 lg:max-w-[480px] xl:max-w-[640px]"
+                  : "mx-auto max-w-[680px] lg:flex-shrink-0"
+            )}
+          >
             <ActiveSalonIndicator />
             {children}
           </main>
 
-          {/* Right sidebar — sticky flex item
-              self-start + sticky top-14: canonical sticky sidebar pattern in flexbox
-              flex-1: fills all remaining horizontal space
-              h-[calc(100vh-3.5rem)]: fills viewport below topbar, scrolls internally */}
           {showRightSidebar && (
-            <div className="hidden lg:block flex-1 min-w-0 sticky top-[80px] self-start">
-              <div className="h-[calc(100vh-3.5rem)] overflow-y-auto pr-6">
+            <div className="sticky top-20 hidden min-w-0 flex-1 self-start lg:block">
+              <div className="h-[calc(100vh-5rem)] overflow-y-auto">
                 <RightSidebar />
               </div>
             </div>
@@ -57,7 +49,6 @@ export function MainLayout({
         </div>
       </div>
 
-      {/* Mobile bottom navigation */}
       <BottomNav />
     </div>
   )

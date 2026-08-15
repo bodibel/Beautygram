@@ -13,10 +13,10 @@ import {
     Palette,
     Waves,
     Smile,
-    Search
 } from "lucide-react"
 import { toast } from "sonner"
 import { createCategory, updateCategory } from "@/lib/actions/category"
+import type { AdminCategory } from "./CategoryManager"
 
 const AVAILABLE_ICONS = [
     { name: "Scissors", icon: Scissors },
@@ -32,7 +32,7 @@ interface CategoryModalProps {
     isOpen: boolean
     onClose: () => void
     onSuccess: () => void
-    category?: any // If editing
+    category?: AdminCategory | null
 }
 
 export function CategoryModal({ isOpen, onClose, onSuccess, category }: CategoryModalProps) {

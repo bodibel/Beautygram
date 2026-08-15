@@ -4,13 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Plus, Edit, Trash2 } from "lucide-react"
 import { Post } from "@/lib/salon-types"
+import Image from "next/image"
 
 interface PostsCardProps {
     posts: Post[]
     onAddPost: () => void
     onEditPost: (post: Post) => void
     onDeletePost: (postId: string) => void
-    formatDate: (timestamp: any) => string
+    formatDate: (timestamp: string | Date) => string
 }
 
 export function PostsCard({ posts, onAddPost, onEditPost, onDeletePost, formatDate }: PostsCardProps) {
@@ -22,7 +23,7 @@ export function PostsCard({ posts, onAddPost, onEditPost, onDeletePost, formatDa
                         <CardTitle>Bejegyzések</CardTitle>
                         <CardDescription>Oszd meg az újdonságokat az ügyfelekkel</CardDescription>
                     </div>
-                    <Button onClick={onAddPost} size="sm">
+                    <Button onClick={onAddPost} size="sm" data-testid="portfolio-add-post">
                         <Plus className="mr-2 h-4 w-4" />
                         Új bejegyzés
                     </Button>
@@ -36,14 +37,16 @@ export function PostsCard({ posts, onAddPost, onEditPost, onDeletePost, formatDa
                 ) : (
                     <div className="space-y-4">
                         {posts.map((post) => (
-                            <div key={post.id} className="border rounded-lg p-4 hover:bg-primary-subtle transition-colors">
+                            <div key={post.id} data-testid="portfolio-post-card" className="border rounded-lg p-4 hover:bg-primary-subtle transition-colors">
                                 <div className="flex items-start gap-4">
                                     {/* Thumbnail - Fixed Size */}
                                     {post.images && post.images.length > 0 && (
                                         <div className="flex-shrink-0 w-24 h-24 rounded-md overflow-hidden bg-gray-100 border">
-                                            <img
+                                            <Image
                                                 src={post.images[0]}
                                                 alt="Post thumbnail"
+                                                width={96}
+                                                height={96}
                                                 className="w-full h-full object-cover"
                                             />
                                         </div>

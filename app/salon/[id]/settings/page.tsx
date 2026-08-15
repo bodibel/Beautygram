@@ -1,82 +1,16 @@
 "use client"
 
-import { use, useState } from "react"
-import { MainLayout } from "@/components/layout/main-layout"
-import { useAuth } from "@/lib/auth-context"
-import { updateSalon } from "@/lib/actions/salon"
-import { useRouter } from "next/navigation"
-import { useSalonData } from "@/hooks/useSalonData"
-import { Salon } from "@/lib/salon-types"
+import { use } from "react"
 
-import { BasicInfoCard } from "@/components/salon/cards/BasicInfoCard"
-import { SettingsModal } from "@/components/salon/modals/SettingsModal"
+import { MainLayout } from "@/components/layout/main-layout"
+import { SalonProfileContent } from "@/components/salon-console/salon-profile-content"
 
 export default function SalonSettingsPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params)
-    const { userData } = useAuth()
-    const router = useRouter()
+  const { id } = use(params)
 
-    const {
-        salon,
-        setSalon,
-        loading
-    } = useSalonData(id, userData?.id)
-
-    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
-
-    const handleSaveSettings = async (settings: Partial<Salon>) => {
-        try {
-            await updateSalon(id, settings)
-            setSalon({ ...salon!, ...settings })
-            setIsSettingsModalOpen(false)
-            alert("Az alapadatok sikeresen frissítve!")
-        } catch (error) {
-            console.error("Error updating salon:", error)
-            alert("Hiba történt a mentés során!")
-        }
-    }
-
-    if (loading) {
-        return (
-            <MainLayout>
-                <div className="container mx-auto p-6">
-                    <div className="text-muted-foreground">Betöltés...</div>
-                </div>
-            </MainLayout>
-        )
-    }
-
-    if (!salon && !loading) {
-        // Use a side effect for navigation
-        return (
-            <MainLayout showRightSidebar={false}>
-                <div className="container mx-auto p-6 text-center">
-                    <p className="text-muted-foreground">Szalon nem található vagy nincs jogosultságod.</p>
-                </div>
-            </MainLayout>
-        )
-    }
-
-    if (!salon) return null
-
-    return (
-        <MainLayout showRightSidebar={false}>
-            <div className="container mx-auto p-6 md:p-8 max-w-7xl">
-                <h1 className="text-3xl font-bold mb-6">Szalon adatok</h1>
-                <div className="max-w-2xl">
-                    <BasicInfoCard
-                        salon={salon}
-                        onEdit={() => setIsSettingsModalOpen(true)}
-                    />
-                </div>
-
-                <SettingsModal
-                    isOpen={isSettingsModalOpen}
-                    onClose={() => setIsSettingsModalOpen(false)}
-                    onSave={handleSaveSettings}
-                    salon={salon}
-                />
-            </div>
-        </MainLayout>
-    )
+  return (
+    <MainLayout showRightSidebar={false}>
+      <SalonProfileContent salonId={id} />
+    </MainLayout>
+  )
 }

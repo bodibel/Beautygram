@@ -66,6 +66,13 @@ const defaultCenter = {
 }
 const MAP_LIBRARIES: ("places" | "geometry")[] = ["places", "geometry"]
 
+type AddressOverrides = {
+    lat?: number
+    lng?: number
+    zip?: string
+    dist?: string
+}
+
 export function EnhancedAddressPicker({ onAddressChange, initialData }: EnhancedAddressPickerProps) {
     // Selection state
     const [country, setCountry] = useState(initialData?.country || "Magyarország")
@@ -93,7 +100,6 @@ export function EnhancedAddressPicker({ onAddressChange, initialData }: Enhanced
 
     // Google Places for City
     const {
-        ready: cityReady,
         value: citySearchValue,
         suggestions: { status: cityStatus, data: cityData },
         setValue: setCitySearchValue,
@@ -109,8 +115,6 @@ export function EnhancedAddressPicker({ onAddressChange, initialData }: Enhanced
     })
     // Google Places for Street - with city prefix for accurate results
     const {
-        ready: streetReady,
-        value: streetSearchValue,
         suggestions: { status: streetStatus, data: streetData },
         setValue: setStreetSearchValue,
         clearSuggestions: clearStreetSuggestions,
@@ -134,6 +138,7 @@ export function EnhancedAddressPicker({ onAddressChange, initialData }: Enhanced
     // and we haven't initialized yet
     useEffect(() => {
         if (initialData && (initialData.city || initialData.lat) && !initializedRef.current) {
+            const timer = window.setTimeout(() => {
             setCountry(initialData.country || "Magyarország");
             setCity(initialData.city || "");
             setCitySearchValue(initialData.city || "", false);
@@ -149,6 +154,8 @@ export function EnhancedAddressPicker({ onAddressChange, initialData }: Enhanced
                 setCoords({ lat: initialData.lat, lng: initialData.lng });
             }
             initializedRef.current = true;
+            }, 0)
+            return () => window.clearTimeout(timer)
         }
     }, [initialData, setCitySearchValue, setStreetSearchValue]);
 
@@ -171,7 +178,7 @@ export function EnhancedAddressPicker({ onAddressChange, initialData }: Enhanced
     }
 
     // Update coordinates when city/street changes via manual selection
-    const updateLocation = async (address: string, isCity: boolean) => {
+    const updateLocation = async (address: string) => {
         try {
             const results = await getGeocode({ address })
             const { lat, lng } = await getLatLng(results[0])
@@ -201,7 +208,7 @@ export function EnhancedAddressPicker({ onAddressChange, initialData }: Enhanced
         }
     }
 
-    const notifyChange = (overrides: any = {}) => {
+    const notifyChange = useCallback((overrides: AddressOverrides = {}) => {
         const fullAddr = `${street} ${houseNumber}${floor ? `, ${floor}. em.` : ""}${door ? ` ${door}. ajtó` : ""}, ${city}, ${country}`.trim()
         onAddressChange({
             country,
@@ -216,7 +223,7 @@ export function EnhancedAddressPicker({ onAddressChange, initialData }: Enhanced
             lng: overrides.lng || coords.lng,
             fullAddress: fullAddr
         })
-    }
+    }, [city, coords.lat, coords.lng, country, district, door, floor, houseNumber, onAddressChange, street, zipCode])
 
     const handleMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
         if (e.latLng) {
@@ -230,7 +237,7 @@ export function EnhancedAddressPicker({ onAddressChange, initialData }: Enhanced
     // Effect to notify change on any field update
     useEffect(() => {
         notifyChange()
-    }, [country, city, district, street, houseNumber, floor, door, zipCode])
+    }, [country, city, district, street, houseNumber, floor, door, zipCode, notifyChange])
 
     return (
         <div className="space-y-6">
@@ -299,7 +306,7 @@ export function EnhancedAddressPicker({ onAddressChange, initialData }: Enhanced
                                     onValueChange={setCitySearchValue}
                                 />
                                 <CommandList>
-                                    {cityStatus === "OK" && cityData.map((suggestion: any) => {
+                                    {cityStatus === "OK" && cityData.map((suggestion) => {
                                         const { place_id, description, structured_formatting } = suggestion
                                         const cityName = structured_formatting?.main_text || description.split(",")[0]
                                         return (
@@ -312,7 +319,7 @@ export function EnhancedAddressPicker({ onAddressChange, initialData }: Enhanced
                                                     setStreetDisplayValue("")
                                                     setHouseNumber("")
                                                     clearCitySuggestions()
-                                                    updateLocation(description, true)
+                                                    updateLocation(description)
                                                 }}
                                             >
                                                 {cityName}
@@ -350,7 +357,7 @@ export function EnhancedAddressPicker({ onAddressChange, initialData }: Enhanced
                                     onValueChange={handleStreetSearchChange}
                                 />
                                 <CommandList>
-                                    {streetStatus === "OK" && streetData.map((suggestion: any) => {
+                                    {streetStatus === "OK" && streetData.map((suggestion) => {
                                         const { place_id, description, structured_formatting } = suggestion
                                         // Extract the street name using main_text or fallback
                                         const streetNameOnly = structured_formatting?.main_text || description.split(",")[0]
@@ -362,7 +369,7 @@ export function EnhancedAddressPicker({ onAddressChange, initialData }: Enhanced
                                                     setStreetDisplayValue("")
                                                     setStreetOpen(false)
                                                     clearStreetSuggestions()
-                                                    updateLocation(description, false)
+                                                    updateLocation(description)
                                                 }}
                                             >
                                                 {streetNameOnly}

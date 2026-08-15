@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Service, OpeningHour, ClosedDate, Post, Salon } from "@/lib/salon-types"
 import { getSalonData } from "@/lib/actions/salon"
 
@@ -10,15 +10,7 @@ export function useSalonData(salonId: string, userId: string | undefined) {
     const [posts, setPosts] = useState<Post[]>([])
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        if (userId && salonId) {
-            loadSalonData()
-        } else if (!userId) {
-            setLoading(false)
-        }
-    }, [userId, salonId])
-
-    const loadSalonData = async () => {
+    const loadSalonData = useCallback(async () => {
         if (!salonId) return
         if (!userId) {
             setLoading(false)
@@ -41,7 +33,15 @@ export function useSalonData(salonId: string, userId: string | undefined) {
         } finally {
             setLoading(false)
         }
-    }
+    }, [salonId, userId])
+
+    useEffect(() => {
+        if (userId && salonId) {
+            loadSalonData()
+        } else if (!userId) {
+            setLoading(false)
+        }
+    }, [loadSalonData, salonId, userId])
 
     return {
         salon,
@@ -58,4 +58,3 @@ export function useSalonData(salonId: string, userId: string | undefined) {
         reload: loadSalonData
     }
 }
-

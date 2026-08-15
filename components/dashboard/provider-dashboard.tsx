@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus, Store, MapPin, Star, X } from "lucide-react"
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/lib/auth-context"
 import { createSalon, getUserSalons } from "@/lib/actions/salon"
 import { getCategories } from "@/lib/actions/category"
+import { getDashboardSalonHref } from "@/lib/navigation-config"
 import { generateSlug } from "@/lib/slug"
 
 interface Salon {
@@ -23,6 +24,12 @@ interface Salon {
     rating: number
     reviewCount: number
     createdAt: Date
+}
+
+interface Category {
+    id: string
+    name: string
+    slug: string
 }
 
 
@@ -44,7 +51,7 @@ export function ProviderDashboard() {
     const [salonDescription, setSalonDescription] = useState("")
     const [salons, setSalons] = useState<Salon[]>([])
     const [loading, setLoading] = useState(true)
-    const [allCategories, setAllCategories] = useState<any[]>([])
+    const [allCategories, setAllCategories] = useState<Category[]>([])
 
     useEffect(() => {
         const loadCategories = async () => {
@@ -54,13 +61,7 @@ export function ProviderDashboard() {
         loadCategories()
     }, [])
 
-    useEffect(() => {
-        if (userData?.id) {
-            loadSalons()
-        }
-    }, [userData])
-
-    const loadSalons = async () => {
+    const loadSalons = useCallback(async () => {
         if (!userData?.id) return
 
         try {
@@ -71,7 +72,13 @@ export function ProviderDashboard() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [userData?.id])
+
+    useEffect(() => {
+        if (userData?.id) {
+            loadSalons()
+        }
+    }, [loadSalons, userData?.id])
 
     const toggleCategory = (slug: string) => {
         if (salonCategories.includes(slug)) {
@@ -158,7 +165,7 @@ export function ProviderDashboard() {
                 ) : (
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {salons.map((salon) => (
-                            <Link key={salon.id} href={`/salon/${salon.id}`}>
+                            <Link key={salon.id} href={getDashboardSalonHref(salon.id)}>
                                 <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                                     <CardHeader>
                                         <CardTitle>{salon.name}</CardTitle>

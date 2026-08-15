@@ -127,6 +127,9 @@ async function main() {
     ]
 
     const allImages = [...cosmeticImages, ...pedicureImages]
+    void cities
+    void categories
+    void allImages
 
     const salonsData = [
         {

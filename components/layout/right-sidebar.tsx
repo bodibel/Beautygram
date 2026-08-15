@@ -18,8 +18,18 @@ const TRENDING_TAGS = [
     { label: "#smink",     type: "service", value: "makeup"   },
 ]
 
+type RecentSalon = {
+    id: string
+    slug: string
+    name: string
+    city?: string | null
+    categories?: string[]
+    profileImage?: string | null
+    rating: number
+}
+
 export function RightSidebar() {
-    const [salons, setSalons] = useState<any[]>([])
+    const [salons, setSalons] = useState<RecentSalon[]>([])
     const [loading, setLoading] = useState(true)
     const router = useRouter()
     const { addServiceFilter, updateSearchQuery, clearFilters, filters } = useFilter()

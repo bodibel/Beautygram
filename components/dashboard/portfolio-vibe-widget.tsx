@@ -1,62 +1,51 @@
 "use client"
 
-import { Plus, Wand2, CheckCircle2 } from "lucide-react"
-import Image from "next/image"
+import Link from "next/link"
+import { Briefcase, Calendar, Image, Settings } from "lucide-react"
+import { useParams } from "next/navigation"
 
-const SAMPLE_IMAGES = [
-    "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200",
-    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=200",
-    "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=200",
-    "https://images.unsplash.com/photo-1582242542187-50b31057865f?w=200",
-    "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200",
-    "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=200",
-]
+import { DashboardSalonSection, getDashboardSalonHref } from "@/lib/navigation-config"
+
+const quickActions = [
+    { label: "Szalon adatai", section: "profile", icon: Settings },
+    { label: "Szolgáltatások", section: "services", icon: Briefcase },
+    { label: "Portfólió", section: "portfolio", icon: Image },
+    { label: "Nyitvatartás", section: "hours", icon: Calendar },
+] satisfies Array<{ label: string; section: DashboardSalonSection; icon: typeof Settings }>
 
 export function PortfolioVibeWidget() {
+    const params = useParams()
+    const salonId = typeof params.salonId === "string"
+        ? params.salonId
+        : typeof params.id === "string"
+            ? params.id
+            : ""
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h3 className="font-bold text-xl text-gray-900">Portfolio Manager</h3>
-                <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">New Upload</span>
+            <div>
+                <h3 className="text-xl font-bold text-gray-900">Gyors műveletek</h3>
+                <p className="text-sm text-gray-500">A szalonkezelő legfontosabb részei.</p>
             </div>
 
-            <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h4 className="font-bold text-gray-900">Vibe Check Tool</h4>
-                        <p className="text-xs text-gray-500">Aesthetic consistency analysis</p>
-                    </div>
-                    <div className="flex items-center gap-1 bg-green-50 text-green-600 px-3 py-1.5 rounded-full text-sm font-bold border border-green-100">
-                        <CheckCircle2 className="h-4 w-4" /> 94% MATCH
-                    </div>
+            <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+                <div className="grid gap-3">
+                    {quickActions.map((action) => {
+                        const Icon = action.icon
+                        return (
+                            <Link
+                                key={action.section}
+                                href={getDashboardSalonHref(salonId, action.section)}
+                                className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50/60 p-4 transition-all duration-500 hover:-translate-y-0.5 hover:bg-white hover:shadow-sm"
+                            >
+                                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                    <Icon className="h-5 w-5" />
+                                </span>
+                                <span className="font-bold text-gray-900">{action.label}</span>
+                            </Link>
+                        )
+                    })}
                 </div>
-
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                    {SAMPLE_IMAGES.map((src, i) => (
-                        <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-gray-100">
-                            <Image src={src} alt="Portfolio" fill className="object-cover" />
-                        </div>
-                    ))}
-                    <button className="flex items-center justify-center aspect-square rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-primary/30 hover:text-primary hover:bg-primary-subtle transition-colors">
-                        <Plus className="h-6 w-6" />
-                    </button>
-                    <button className="flex items-center justify-center aspect-square rounded-xl border-2 border-dashed border-gray-200 text-primary/70 bg-primary/10 hover:bg-primary/20 transition-colors">
-                        <Wand2 className="h-6 w-6" />
-                    </button>
-                </div>
-
-                <div>
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Active Palette</span>
-                    <div className="flex gap-2">
-                        {["#eec7ba", "#bba19b", "#d61c69", "#1f1a1d", "#f5f5f5"].map(color => (
-                            <div key={color} className="h-8 w-12 rounded-full shadow-sm ring-1 ring-black/5" style={{ backgroundColor: color }} />
-                        ))}
-                    </div>
-                </div>
-
-                <button className="w-full mt-6 bg-gray-900 text-white rounded-xl py-3 text-sm font-bold hover:bg-black transition-colors flex items-center justify-center gap-2">
-                    <Wand2 className="h-4 w-4" /> Optimize Feed Vibe
-                </button>
             </div>
         </div>
     )

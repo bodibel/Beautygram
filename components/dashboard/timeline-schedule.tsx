@@ -12,7 +12,7 @@ const SCHEDULE = [
 export function TimelineSchedule() {
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="font-bold text-xl text-gray-900">Upcoming Schedule</h3>
                 <button className="text-sm font-bold text-primary hover:underline">View Full Calendar</button>
             </div>
@@ -26,22 +26,22 @@ export function TimelineSchedule() {
                         </div>
 
                         {/* Card */}
-                        <div className={`flex items-center justify-between rounded-3xl p-5 transition-shadow ${item.active ? "bg-white shadow-md ring-1 ring-primary/10" : "bg-white border border-gray-100"}`}>
-                            <div className="flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-2xl overflow-hidden bg-gray-100 relative">
+                        <div className={`flex min-w-0 flex-col gap-4 rounded-3xl p-4 transition-shadow sm:flex-row sm:items-center sm:justify-between sm:p-5 ${item.active ? "bg-white shadow-md ring-1 ring-primary/10" : "bg-white border border-gray-100"}`}>
+                            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-gray-100">
                                     <Image src={item.avatar} alt={item.client} fill className="object-cover" />
                                 </div>
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
+                                <div className="min-w-0">
+                                    <div className="mb-1 flex flex-wrap items-center gap-2">
                                         <span className="text-sm font-bold text-gray-500">{item.time}</span>
                                         {item.active && <span className="text-[10px] font-bold text-white bg-accent px-2 py-0.5 rounded-full">ONGOING</span>}
                                     </div>
-                                    <h4 className="font-bold text-gray-900">{item.client}</h4>
-                                    <p className="text-sm text-gray-500">{item.service}</p>
+                                    <h4 className="truncate font-bold text-gray-900">{item.client}</h4>
+                                    <p className="break-words text-sm text-gray-500">{item.service}</p>
                                 </div>
                             </div>
 
-                            <button className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${item.active ? "bg-primary text-white hover:bg-primary shadow-md shadow-primary/20" : "bg-gray-50 text-gray-600 hover:bg-gray-100"}`}>
+                            <button className={`self-start rounded-full px-4 py-2 text-sm font-semibold transition-colors sm:self-auto ${item.active ? "bg-primary text-white hover:bg-primary shadow-md shadow-primary/20" : "bg-gray-50 text-gray-600 hover:bg-gray-100"}`}>
                                 {item.active ? "Check-In" : "Reschedule"}
                             </button>
                         </div>

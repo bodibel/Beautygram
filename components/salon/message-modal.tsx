@@ -130,6 +130,7 @@ export function MessageModal({ isOpen, onClose, receiverId, receiverName, salonI
                         <Label>Üzenet</Label>
                         <Textarea
                             placeholder="Írd ide az üzeneted..."
+                            data-testid="public-message-content"
                             className="min-h-[150px]"
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
@@ -138,7 +139,7 @@ export function MessageModal({ isOpen, onClose, receiverId, receiverName, salonI
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Mégse</Button>
-                    <Button onClick={handleSend} disabled={loading || !content}>
+                    <Button onClick={handleSend} data-testid="public-message-submit" disabled={loading || !content}>
                         {loading ? "Küldés..." : "Küldés"}
                     </Button>
                 </DialogFooter>
