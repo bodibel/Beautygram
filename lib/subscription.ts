@@ -9,6 +9,7 @@
 import { createHash } from "crypto"
 import prisma from "@/lib/db"
 import { SubscriptionPlan, SubscriptionStatus } from "@prisma/client"
+import { AUDIT_ACTIONS, writeAuditLog } from "@/lib/audit-log"
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -150,11 +151,17 @@ export async function canCreatePost(salonId: string): Promise<{
   reason?: string
   remainingPosts?: number
 }> {
+  const config = await getSubscriptionConfig()
+
+  // 1. fázis: nincs csomagkorlát.
+  if (!config.billingEnabled) return { allowed: true }
+
   const sub = await getSalonSubscription(salonId)
 
-  // Ha nincs sub rekord, Free-ként kezeljük (régi szalon)
+  // Fail-closed: a backfill után nem lehet rekord nélküli szalon,
+  // ezért a hiánya adathibát jelent, nem korlátlan használatot.
   if (!sub) {
-    return { allowed: true } // backward compat
+    return { allowed: false, reason: "Az előfizetés nem található. Kérjük vegye fel a kapcsolatot az ügyfélszolgálattal." }
   }
 
   if (sub.status === SubscriptionStatus.INACTIVE) {
@@ -171,7 +178,6 @@ export async function canCreatePost(salonId: string): Promise<{
   }
 
   // FREE: 30 napos gördülő ablak ellenőrzés
-  const config = await getSubscriptionConfig()
   const now = new Date()
   const windowStart = sub.postWindowStart
   const windowAgeMs = now.getTime() - windowStart.getTime()
@@ -225,6 +231,11 @@ export async function canUploadVideo(salonId: string): Promise<{
   allowed: boolean
   reason?: string
 }> {
+  const config = await getSubscriptionConfig()
+
+  // 1. fázis: nincs csomagkorlát, a videófeltöltés mindenkinek elérhető.
+  if (!config.billingEnabled) return { allowed: true }
+
   const sub = await getSalonSubscription(salonId)
 
   if (!sub || sub.plan === SubscriptionPlan.FREE) {
@@ -270,6 +281,11 @@ export async function isPremium(salonId: string): Promise<boolean> {
  * Visszaadja az inaktivált szalonok számát.
  */
 export async function expireFreeSalons(): Promise<number> {
+  const config = await getSubscriptionConfig()
+
+  // 1. fázis: a lejáratás ki van kapcsolva, minden szalon ingyenesen publikálható.
+  if (!config.billingEnabled) return 0
+
   const now = new Date()
 
   // Megkeressük a lejárt, még aktív FREE szalonokat
@@ -286,7 +302,9 @@ export async function expireFreeSalons(): Promise<number> {
 
   const salonIds = expired.map((s) => s.salonId)
 
-  // Tranzakcióban inaktiváljuk a Subscription-t és a Salon-t
+  // A szalonra publikálási tiltást írunk, NEM isActive-ot.
+  // Az isActive fiókszintű mező; ha ide írnánk, a fiók visszaállítása
+  // feloldaná az előfizetés miatti tiltást is.
   await prisma.$transaction([
     prisma.subscription.updateMany({
       where: { salonId: { in: salonIds } },
@@ -294,9 +312,20 @@ export async function expireFreeSalons(): Promise<number> {
     }),
     prisma.salon.updateMany({
       where: { id: { in: salonIds } },
-      data: { isActive: false, inactivatedAt: now },
+      data: { publishBlockedReason: "BILLING", publishBlockedAt: now },
     }),
   ])
+
+  // Szalononként külön bejegyzés, hogy az admin nézetben az entityId szerint
+  // vissza lehessen keresni, mikor és miért tiltódott egy konkrét szalon.
+  for (const salonId of salonIds) {
+    await writeAuditLog({
+      action: AUDIT_ACTIONS.SALON_BILLING_BLOCKED,
+      entity: "Salon",
+      entityId: salonId,
+      metadata: { reason: "FREE_TRIAL_EXPIRED" },
+    })
+  }
 
   return expired.length
 }
