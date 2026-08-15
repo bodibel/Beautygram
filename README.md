@@ -109,6 +109,22 @@ A `User.deactivatedBy` mező különbözteti meg a két esetet:
 - `"self"` – a felhasználó maga inaktiválta a fiókját. 30 napon belüli bejelentkezéskor automatikusan visszaáll.
 - `"admin"` – adminisztrátori tiltás. **Bejelentkezéssel soha nem oldható fel**, csak admin állíthatja vissza.
 
+### Szalon publikálási állapot
+
+Egy szolgáltatónak több szalonja is lehet. A szalon **létrehozása mindig ingyenes**; a publikálást a `lib/salon-publishing.ts` házirendje engedélyezi.
+
+A `Salon` három, egymástól független jelzőt használ, mindegyiknek pontosan egy írójával:
+
+| Mező | Jelentés | Írója |
+| --- | --- | --- |
+| `isActive` | Fiókszintű állapot | Fiókműveletek (admin tiltás, felhasználói inaktiválás) |
+| `isPublished` | A tulajdonos publikálási szándéka | A tulajdonos (`createSalon`, `publishSalon`, `unpublishSalon`) |
+| `publishBlockedReason` | Rendszer általi tiltás (`"BILLING"` / `"ADMIN"`) | A rendszer (előfizetés lejárat, adminisztrátori intézkedés) |
+
+Egy szalon akkor és csak akkor látható a látogatóknak, ha mindhárom feltétel teljesül. A láthatóság egyetlen helyen van definiálva: [`lib/salon-visibility.ts`](lib/salon-visibility.ts). Minden publikus lekérdezésnek a `PUBLIC_SALON_WHERE` töredéket kell használnia.
+
+A `SubscriptionConfig.billingEnabled` a fizetési fázisok fő kapcsolója. Amíg `false` (1. fázis), sem az előfizetés-lejáratás, sem a csomagkorlátok nem érvényesülnek, és minden szalon ingyenesen publikálható.
+
 ---
 
 ## Eseménynapló (audit log)

@@ -301,7 +301,7 @@ Az alábbiak nem képezték a mostani javítás részét:
 | Eseménynapló megőrzési ideje | Nincs archiválási vagy törlési szabály; a tábla korlátlanul nő. | P2 |
 | `CommentLike` funkció | A tábla és a modell létezik, de a kód nem használja. | P3 |
 | Egy szolgáltató – egy szalon szabály | **Visszavonva.** A szabály már nem él: egy szolgáltatónak több szalonja is lehet. A `codex` ág T-008 feladatát tehát nem kell portolni. A többszalonos működés logikai rendbetétele és a későbbi fizetős publikálás terve: [`../superpowers/specs/2026-08-15-salon-publishing-state-design.md`](../superpowers/specs/2026-08-15-salon-publishing-state-design.md). | — |
-| `Salon.isActive` háromszoros túlterhelése | A mező egyszerre jelöli az előfizetés lejáratát, az adminisztrátori tiltás kaszkádját és a felhasználó saját inaktiválását. Emiatt a fiók-visszaállítás feloldja az előfizetés miatti inaktiválást is. Jelenleg ártalmatlan (minden ingyenes), de a fizetés bevezetése előtt javítani kell. Terv: a fenti spec. | P1 |
+| `Salon.isActive` háromszoros túlterhelése | **Megoldva.** A publikálási állapot külön mezőkbe került, a lejáratás `publishBlockedReason`-t ír. Terv és megvalósítás: [`../superpowers/plans/2026-08-15-salon-publishing-state.md`](../superpowers/plans/2026-08-15-salon-publishing-state.md). | — |
 | `story-bar.tsx` nem létező mezőt olvas | A `salon.subscriptionPlan` mező nem szerepel a Prisma sémában, így a prémium jelölés soha nem jelenik meg. Holt kód, nem hiba-forrás. | P3 |
 | Holt kód a `lib/subscription.ts`-ben | A `canUseBooking` és az `isPremium` sehonnan nincs meghívva. | P3 |
 | Archívumfájlok a repóban | Több `.tar.gz` és `.tar` fájl a gyökérben; a `.gitignore` kizárja őket, de a lemezen ott vannak. | P3 |
