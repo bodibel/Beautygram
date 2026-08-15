@@ -833,7 +833,9 @@ export async function getRecentPosts(page: number = 1, filters: {
             }
 
             if (Object.keys(salonConditions).length > 0) {
-                where.salon = salonConditions
+                // Összefésülés, NEM felülírás: a láthatósági feltételeknek a szűrt
+                // lekérdezéseknél is érvényben kell maradniuk.
+                where.salon = { ...PUBLIC_SALON_WHERE, ...salonConditions }
             }
         }
 
