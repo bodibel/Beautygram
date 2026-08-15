@@ -8,6 +8,7 @@ import { join } from "path"
 import prisma from "@/lib/db"
 import { AUDIT_ACTIONS, getAuditActionContext, writeAuditLog } from "@/lib/audit-log"
 import { generateUniqueSlug } from "@/lib/slug"
+import { PUBLIC_SALON_WHERE, isSalonPubliclyVisible } from "@/lib/salon-visibility"
 import { requireSession } from "@/lib/auth-utils"
 import {
     canAcceptBookingRequest,
@@ -627,7 +628,7 @@ export async function deleteService(serviceId: string) {
 export async function getAllSalons() {
     try {
         return await prisma.salon.findMany({
-            where: { isActive: true }
+            where: { ...PUBLIC_SALON_WHERE }
         })
     } catch (error) {
         console.error("Error fetching all salons:", error)
@@ -645,7 +646,7 @@ export async function getFeaturedSalons({
     limit?: number
 }) {
     try {
-        const baseWhere: Prisma.SalonWhereInput = { isActive: true }
+        const baseWhere: Prisma.SalonWhereInput = { ...PUBLIC_SALON_WHERE }
 
         if (city) {
             baseWhere.city = { contains: city, mode: "insensitive" }
@@ -708,7 +709,7 @@ export async function getFeaturedSalons({
 export async function getRecentSalons(limit = 4) {
     try {
         return await prisma.salon.findMany({
-            where: { isActive: true },
+            where: { ...PUBLIC_SALON_WHERE },
             orderBy: { createdAt: "desc" },
             take: limit,
             select: {
@@ -732,7 +733,7 @@ export async function getPublicSalonData(slug: string) {
         const salon = await prisma.salon.findFirst({
             where: {
                 slug,
-                isActive: true
+                ...PUBLIC_SALON_WHERE
             },
             include: {
                 services: true,
@@ -804,6 +805,8 @@ export async function getRecentPosts(page: number = 1, filters: {
 } = {}, currentUserId?: string) {
     try {
         const where: Prisma.PostWhereInput = { isActive: true }
+        // A nem publikált szalonok posztjai nem jelenhetnek meg a publikus feedben.
+        where.salon = { ...PUBLIC_SALON_WHERE }
 
         if (filters) {
             const salonConditions: Prisma.SalonWhereInput = {}
@@ -997,6 +1000,17 @@ export async function sendMessage(data: {
         throw new Error("Nem küldhetsz üzenetet magadnak!")
     }
     const content = requireNonEmptyText(data.content, "Üzenet")
+
+    // Szalon-kontextusú üzenet csak látható szalonnak küldhető.
+    if (data.salonId) {
+        const salon = await prisma.salon.findUnique({
+            where: { id: data.salonId },
+            select: { isActive: true, isPublished: true, publishBlockedReason: true },
+        })
+        if (!salon || !isSalonPubliclyVisible(salon)) {
+            throw new Error("Ez a szalon jelenleg nem érhető el.")
+        }
+    }
 
     const message = await prisma.message.create({
         data: { ...data, content }
@@ -1372,12 +1386,14 @@ export async function createBooking(data: BookingInput) {
             id: true,
             ownerId: true,
             isActive: true,
+            isPublished: true,
+            publishBlockedReason: true,
             allowBookings: true,
         }
     })
 
     if (!salon) throw new Error("A szalon nem található.")
-    if (!salon.isActive) throw new Error("Inaktív szalonhoz nem lehet foglalást létrehozni.")
+    if (!isSalonPubliclyVisible(salon)) throw new Error("Ez a szalon jelenleg nem érhető el.")
     if (!salon.allowBookings) throw new Error("Ez a szalon jelenleg nem fogad foglalásokat.")
     if (salon.ownerId === sessionUserId) throw new Error("Saját szalonodhoz nem hozhatsz létre foglalást.")
 
