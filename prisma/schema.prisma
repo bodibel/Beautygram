@@ -126,8 +126,21 @@ model Salon {
   languages     String[]
   lat           Float?
   lng           Float?
+  // Fiókszintű állapot. Írója KIZÁRÓLAG a fiókművelet-kaszkád
+  // (admin tiltás, felhasználói inaktiválás és ezek visszaállítása).
   isActive      Boolean   @default(true)
   inactivatedAt DateTime?
+
+  // A tulajdonos publikálási szándéka.
+  // Írója KIZÁRÓLAG a tulajdonos: createSalon, publishSalon, unpublishSalon.
+  isPublished   Boolean   @default(false)
+  publishedAt   DateTime?
+
+  // Rendszer általi publikálási tiltás.
+  // Írója KIZÁRÓLAG a rendszer: előfizetés lejárat, adminisztrátori intézkedés.
+  // Értékei: null | "BILLING" | "ADMIN"
+  publishBlockedReason String?
+  publishBlockedAt     DateTime?
 
   // Duplikáció megelőzés: normalizált telefon+cím hash, globálisan egyedi
   // Formátum: sha256(normalizedPhone + "|" + normalizedAddress)
@@ -216,6 +229,10 @@ model SubscriptionConfig {
   // Free csomag korlátok
   freeTrialDays        Int @default(60)  // 2 hónap
   freeMonthlyPostLimit Int @default(5)
+
+  // Fő kapcsoló. Amíg false, sem a lejáratás, sem a csomagkorlátok nem érvényesülnek.
+  // 1. fázis (felfutás): false. 2. fázistól: true.
+  billingEnabled Boolean @default(false)
 
   // Stripe Price ID-k (admin adja meg)
   standardPriceHufId String?
