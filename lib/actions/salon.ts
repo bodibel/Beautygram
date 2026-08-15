@@ -276,9 +276,66 @@ export async function setSalonBookingAvailability(salonId: string, allowBookings
     return salon.allowBookings
 }
 
+/**
+ * A szolgáltató által szerkeszthető szalonmezők.
+ *
+ * Szándékosan allowlist és nem denylist: az `UpdateSalonInput` a teljes Prisma
+ * update típus, tehát szűrés nélkül a szalon tulajdonosa olyan mezőket is
+ * írhatna, mint az `ownerId` (tulajdonjog átírása), `isActive` (lejárat
+ * megkerülése), `rating` / `reviewCount` (értékelés hamisítása), `slug` vagy
+ * `salonFingerprint` (duplikációellenőrzés megkerülése).
+ *
+ * Új szerkeszthető mező felvételekor ide is fel kell venni.
+ */
+const PROVIDER_EDITABLE_SALON_FIELDS = new Set([
+    "name",
+    "country",
+    "city",
+    "district",
+    "street",
+    "houseNumber",
+    "floor",
+    "door",
+    "zipCode",
+    "address",
+    "categories",
+    "currency",
+    "description",
+    "images",
+    "profileImage",
+    "coverImage",
+    "email",
+    "phone",
+    "website",
+    "languages",
+    "lat",
+    "lng",
+    "ownerName",
+    "ownerImage",
+    "aboutMe",
+    "isTeam",
+    "allowMessages",
+    "allowBookings",
+    "showPhoneOnProfile",
+    "showEmailOnProfile",
+    "notifyNewMessage",
+    "notifyNewBooking",
+    "notifyNewReview",
+    "notifyNewFavorite",
+    "notifyPostLike",
+    "notifyPostComment",
+    "notifyWeeklyStats",
+    "notifyMonthlyStats",
+])
+
 export async function updateSalon(salonId: string, data: UpdateSalonInput) {
     const ownerId = await requireSalonOwner(salonId)
-    const { teamMembers, ...salonData } = data;
+    const { teamMembers, ...incomingSalonData } = data;
+
+    // Mass-assignment elleni védelem: a nem engedélyezett mezőket eldobjuk.
+    const salonData = Object.fromEntries(
+        Object.entries(incomingSalonData).filter(([key]) => PROVIDER_EDITABLE_SALON_FIELDS.has(key))
+    );
 
     try {
         const result = await prisma.$transaction(async (tx) => {

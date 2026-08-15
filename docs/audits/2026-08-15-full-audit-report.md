@@ -13,11 +13,11 @@ Hatókör: kód- és hiányosságellenőrzés, biztonság, be- és kijelentkezé
 | Súlyosság | Talált | Javítva |
 | --- | ---: | ---: |
 | Kritikus | 2 | 2 |
-| Magas | 2 | 2 |
+| Magas | 3 | 3 |
 | Közepes | 6 | 6 |
 | Alacsony / dokumentáció | 5 | 5 |
 
-A javítás utáni állapot: `npm run typecheck` hibamentes, `npm run lint` figyelmeztetés nélkül, `npm run test:run` 75/75 zöld.
+A javítás utáni állapot: `npm run typecheck` hibamentes, `npm run lint` figyelmeztetés nélkül, `npm run test:run` 84/84 zöld.
 
 ---
 
@@ -98,6 +98,28 @@ Emiatt a `prisma migrate status` előzmény-eltérést jelzett, és bármilyen �
 **Javítás:** a baseline előtti migrációk a `prisma/migrations_legacy_pre_baseline/` mappába kerültek, a `prisma/migrations/` pedig az adatbázisban ténylegesen alkalmazott előzményt tükrözi. A hiányzó modellek visszakerültek a sémába.
 
 Ellenőrzés: `npx prisma migrate status` → *"Database schema is up to date!"*
+
+### 3.3 Mass-assignment az `updateSalon()`-ban
+
+**Fájl:** `lib/actions/salon.ts`
+
+Az `updateSalon()` a teljes `Prisma.SalonUncheckedUpdateInput` típust fogadta, és a bejövő objektumot szűrés nélkül továbbadta a `prisma.salon.update()`-nek. A hívók `Partial<Salon>`-t adnak át kliensoldali űrlapokból, tehát a szalon tulajdonosa tetszőleges oszlopot írhatott:
+
+| Mező | Visszaélés |
+| --- | --- |
+| `ownerId` | A szalon átírása másik felhasználóra |
+| `isActive` / `inactivatedAt` | A FREE időszak lejáratának megkerülése |
+| `rating` / `reviewCount` | Értékelés hamisítása |
+| `slug` | Másik szalon URL-jének elvétele |
+| `salonFingerprint` | A duplikációellenőrzés megkerülése |
+
+A `requireSalonOwner()` guard csak azt biztosította, hogy a hívó a saját szalonját szerkessze — azt nem, hogy *mit* szerkeszthet.
+
+Ez a javítás a `codex/release-prep-2026-04-25` ágon már elkészült (T-003), de a `main` ágra soha nem került át.
+
+**Javítás:** explicit allowlist (`PROVIDER_EDITABLE_SALON_FIELDS`, 39 mező); minden más kulcs eldobásra kerül. Az összes jelenlegi hívó (szalonbeállítások, kapcsolat, galéria, csapat) csak engedélyezett mezőket küld, tehát a szűrés nem érint működő funkciót.
+
+Regressziós teszt: `tests/auth/salon-mass-assignment.test.ts` — 9 eset, amely ellenőrzi, hogy a jogos mezők átmennek, a hét védett mező pedig kivétel nélkül eldobásra kerül.
 
 ---
 
@@ -203,6 +225,20 @@ A vizsgálat idején a `main` és az `origin/main` commitjai azonosak voltak (`3
 
 Ez azt jelentette, hogy a Git-en lévő verzió egy lényegesen régebbi állapotot tükrözött, és a helyi gép elvesztése esetén a munka nagy része megsemmisült volna.
 
+### Be nem olvasztott munka a `codex/release-prep-2026-04-25` ágon
+
+Az ág egy soha be nem olvasztott biztonsági release-előkészítést tartalmaz (T-001 … T-009, dokumentálva a `docs/glowyspot_audit_log.md`-ben azon az ágon). Ebből a mostani auditig hiányzott a `main`-ről:
+
+| Feladat | Állapot a `main`-en az audit előtt | Most |
+| --- | --- | --- |
+| T-003 mass-assignment védelem | hiányzott | portolva (3.3 pont) |
+| T-005 cron fail-closed | hiányzott | portolva (2.1 pont) |
+| Audit-log implementáció | hiányzott | portolva és kibővítve (6. pont) |
+| T-008 egy szolgáltató – egy szalon | hiányzik | terméki döntés, lásd 10. pont |
+| T-002, T-004, T-006, T-007, T-009 | jelen van | — |
+
+Az ág a jövőben is érdemes átnézésre, mielőtt törölnék.
+
 ---
 
 ## 7.1 Függőségi sebezhetőségek
@@ -243,7 +279,7 @@ Ellenőrzés a frissítés után: typecheck és lint tiszta, 75/75 teszt zöld, 
 | --- | --- |
 | `npm run typecheck` | hibamentes |
 | `npm run lint` | figyelmeztetés nélkül |
-| `npm run test:run` | 75 / 75 zöld |
+| `npm run test:run` | 84 / 84 zöld |
 | `npx prisma migrate status` | "Database schema is up to date!" |
 | Cron auth nélkül / hibás kulccsal / helyes kulccsal | 401 / 401 / 200 |
 | Letiltott fiók bejelentkezése | 401, nincs session, tiltás megmarad |
@@ -264,4 +300,5 @@ Az alábbiak nem képezték a mostani javítás részét:
 | Upload rate limit | Folyamat-lokális, több példány esetén nem közös. | P2 |
 | Eseménynapló megőrzési ideje | Nincs archiválási vagy törlési szabály; a tábla korlátlanul nő. | P2 |
 | `CommentLike` funkció | A tábla és a modell létezik, de a kód nem használja. | P3 |
+| Egy szolgáltató – egy szalon szabály | A `codex/release-prep-2026-04-25` ág T-008 feladata ezt a `createSalon()`-ban kikényszerítette, a `main`-en nincs érvényben. Ez **terméki döntés**, nem hiba, ezért nem került át. Ha az MVP szabály továbbra is él, portolni kell. | P2 |
 | Archívumfájlok a repóban | Több `.tar.gz` és `.tar` fájl a gyökérben; a `.gitignore` kizárja őket, de a lemezen ott vannak. | P3 |
