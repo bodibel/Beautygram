@@ -277,6 +277,8 @@ async function main() {
                 lat: 47.4979 + (Math.random() - 0.5) * 0.1,
                 lng: 19.0402 + (Math.random() - 0.5) * 0.1,
                 salonFingerprint: fingerprint,
+                isPublished: true,
+                publishedAt: now,
             }
         })
 

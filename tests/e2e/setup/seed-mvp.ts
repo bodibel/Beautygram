@@ -77,6 +77,8 @@ async function main() {
       allowBookings: true,
       allowMessages: true,
       isActive: true,
+      isPublished: true,
+      publishedAt: new Date(),
     },
   })
 
@@ -127,6 +129,8 @@ async function main() {
       allowBookings: true,
       allowMessages: true,
       isActive: true,
+      isPublished: true,
+      publishedAt: new Date(),
     },
   })
 

@@ -27,7 +27,7 @@ export async function readSmokeFixtures(): Promise<SmokeFixtures> {
         SELECT s.id
         FROM "Salon" s
         JOIN "User" u ON u.id = s."ownerId"
-        WHERE u.email = $1 AND s."isActive" = true
+        WHERE u.email = $1 AND s."isActive" = true AND s."isPublished" = true
         ORDER BY s.name ASC
         LIMIT 1
       `,
@@ -39,7 +39,7 @@ export async function readSmokeFixtures(): Promise<SmokeFixtures> {
         SELECT s.id
         FROM "Salon" s
         JOIN "User" u ON u.id = s."ownerId"
-        WHERE u.email = $1 AND s."isActive" = true
+        WHERE u.email = $1 AND s."isActive" = true AND s."isPublished" = true
         ORDER BY s.name ASC
         LIMIT 1
       `,
