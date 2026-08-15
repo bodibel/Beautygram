@@ -15,6 +15,8 @@ import { getDashboardSalonHref } from "@/lib/navigation-config"
 import { Salon } from "@/lib/salon-types"
 
 type DashboardSalon = Salon & {
+    isPublished?: boolean
+    publishBlockedReason?: string | null
     subscription?: {
         plan: "FREE" | "STANDARD" | "PREMIUM"
         status: "ACTIVE" | "INACTIVE" | "PAST_DUE" | "CANCELLED"
@@ -124,6 +126,21 @@ export default function SalonsPage() {
                                                 <span className="text-xs font-bold uppercase tracking-wide">Nincs kép</span>
                                             </div>
                                         )}
+                                        <div className="absolute left-4 top-4">
+                                            {salon.publishBlockedReason ? (
+                                                <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700 shadow-sm">
+                                                    Tiltva
+                                                </span>
+                                            ) : salon.isPublished ? (
+                                                <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-700 shadow-sm">
+                                                    Publikálva
+                                                </span>
+                                            ) : (
+                                                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-black text-gray-600 shadow-sm">
+                                                    Nem publikált
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-surface/95 px-3 py-1 shadow-sm backdrop-blur">
                                             <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                                             <span className="text-xs font-black text-text-primary">{salon.rating.toFixed(1)}</span>

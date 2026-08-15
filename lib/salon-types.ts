@@ -62,6 +62,8 @@ export interface Salon {
     ownerId: string
     rating: number
     reviewCount: number
+    isPublished?: boolean
+    publishBlockedReason?: string | null
     images?: string[]
     profileImage?: string
     coverImage?: string

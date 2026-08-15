@@ -4,6 +4,7 @@ import { useState } from "react"
 
 import { BasicInfoCard } from "@/components/salon/cards/BasicInfoCard"
 import { SettingsModal } from "@/components/salon/modals/SettingsModal"
+import { SalonPublishToggle } from "@/components/salon-console/salon-publish-toggle"
 import { useSalonData } from "@/hooks/useSalonData"
 import { updateSalon } from "@/lib/actions/salon"
 import { useAuth } from "@/lib/auth-context"
@@ -44,6 +45,12 @@ export function SalonProfileContent({ salonId }: { salonId: string }) {
 
   return (
     <div className="container mx-auto max-w-7xl p-6 md:p-8">
+      <SalonPublishToggle
+        salonId={salonId}
+        isPublished={salon.isPublished ?? false}
+        publishBlockedReason={salon.publishBlockedReason ?? null}
+        onChanged={() => window.location.reload()}
+      />
       <h1 className="mb-6 text-3xl font-bold">Szalon adatok</h1>
       <div className="max-w-2xl">
         <BasicInfoCard salon={salon} onEdit={() => setIsSettingsModalOpen(true)} />
