@@ -15,6 +15,7 @@ import { SubscriptionPlan, SubscriptionStatus } from "@prisma/client"
 export const DEFAULT_CONFIG = {
   freeTrialDays: 60,       // 2 hónap
   freeMonthlyPostLimit: 5, // 5 poszt / 30 nap
+  billingEnabled: false,   // 1. fázis: minden ingyenes, semmi nem jár le
 }
 
 /** Admin által beállított konfiguráció, fallback a DEFAULT_CONFIG értékeire */
@@ -25,6 +26,7 @@ export async function getSubscriptionConfig() {
   return {
     freeTrialDays: config?.freeTrialDays ?? DEFAULT_CONFIG.freeTrialDays,
     freeMonthlyPostLimit: config?.freeMonthlyPostLimit ?? DEFAULT_CONFIG.freeMonthlyPostLimit,
+    billingEnabled: config?.billingEnabled ?? DEFAULT_CONFIG.billingEnabled,
     stripePublishableKey: config?.stripePublishableKey ?? null,
     stripeSecretKey: config?.stripeSecretKey ?? null,
     stripeWebhookSecret: config?.stripeWebhookSecret ?? null,
