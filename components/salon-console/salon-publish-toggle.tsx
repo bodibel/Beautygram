@@ -39,16 +39,26 @@ export function SalonPublishToggle({
     }
 
     startTransition(async () => {
-      const result = isPublished
-        ? await unpublishSalon(salonId)
-        : await publishSalon(salonId)
+      // A szerver action nem csak `{ success: false }` értéket adhat vissza, hanem
+      // dobhat is (pl. lejárt munkamenet esetén a requireSession). Kezeletlenül ez
+      // a következő renderben újra feldobódna, és mivel az alkalmazásban nincs
+      // error boundary, az egész oldal a Next.js hibaoldalára esne — a felhasználó
+      // pedig nem látná, mi történt.
+      try {
+        const result = isPublished
+          ? await unpublishSalon(salonId)
+          : await publishSalon(salonId)
 
-      if (!result.success) {
-        const message = "error" in result ? result.error : undefined
-        setError(typeof message === "string" && message ? message : "A művelet nem sikerült.")
-        return
+        if (!result.success) {
+          const message = "error" in result ? result.error : undefined
+          setError(typeof message === "string" && message ? message : "A művelet nem sikerült.")
+          return
+        }
+        onChanged?.()
+      } catch (err) {
+        console.error("Publikálási művelet hiba:", err)
+        setError(err instanceof Error && err.message ? err.message : "A művelet nem sikerült.")
       }
-      onChanged?.()
     })
   }
 
