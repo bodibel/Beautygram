@@ -11,6 +11,7 @@ Ez az index a `docs/` mappa tartalmát rendszerezi. A projekt telepítése, para
 | Dokumentum | Tartalom |
 | --- | --- |
 | [`audits/2026-08-15-full-audit-report.md`](audits/2026-08-15-full-audit-report.md) | **Legfrissebb teljes audit** — biztonság, szerepkörök, logolás, frontend, dokumentáció |
+| [`superpowers/specs/2026-08-15-salon-publishing-state-design.md`](superpowers/specs/2026-08-15-salon-publishing-state-design.md) | **Jóváhagyott terv:** többszalonos publikálási állapot és a fizetős publikálás előkészítése |
 | [`project-ai-context-map.md`](project-ai-context-map.md) | A kódbázis felépítésének térképe |
 
 ---
