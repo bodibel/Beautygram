@@ -98,4 +98,14 @@ describe("createSalon publikálási állapota", () => {
 
         await expect(createSalon(ERVENYES_ADAT)).resolves.toMatchObject({ id: "salon-uj" })
     })
+
+    it("a canPublishSalon hibája esetén is sikerül a létrehozás, de publikálatlanul", async () => {
+        mocks.canPublishSalon.mockRejectedValue(new Error("Adatbázis hiba"))
+
+        await expect(createSalon(ERVENYES_ADAT)).resolves.toMatchObject({ id: "salon-uj" })
+
+        const createArg = mocks.prisma.salon.create.mock.calls[0][0]
+        expect(createArg.data.isPublished).toBe(false)
+        expect(createArg.data.publishedAt).toBeNull()
+    })
 })

@@ -7,7 +7,7 @@ import { existsSync } from "fs"
 import { join } from "path"
 import prisma from "@/lib/db"
 import { AUDIT_ACTIONS, getAuditActionContext, writeAuditLog } from "@/lib/audit-log"
-import { canPublishSalon } from "@/lib/salon-publishing"
+import { canPublishSalon, type PublishPolicyResult } from "@/lib/salon-publishing"
 import { generateUniqueSlug } from "@/lib/slug"
 import { PUBLIC_SALON_WHERE, isSalonPubliclyVisible } from "@/lib/salon-visibility"
 import { requireSession } from "@/lib/auth-utils"
@@ -605,9 +605,16 @@ export async function createSalon(data: CreateSalonInput) {
     try {
         const slug = await generateUniqueSlug(salonName, prisma)
         // A publikálás a házirenden keresztül dől el. Az 1. fázisban ez mindig
-        // engedélyez, tehát az új szalon azonnal publikált lesz. A létrehozás
-        // maga sosem bukik el a publikálási házirenden.
-        const publishPolicy = await canPublishSalon(data.ownerId ?? sessionUserId)
+        // engedélyez, tehát az új szalon azonnal publikált lesz. A canPublishSalon
+        // adatbázist olvas, tehát dobhat — hiba esetén publikálatlanul jön létre a
+        // szalon, de a létrehozás maga sosem bukik el a publikálási házirenden.
+        let publishPolicy: PublishPolicyResult
+        try {
+            publishPolicy = await canPublishSalon(data.ownerId ?? sessionUserId)
+        } catch (error) {
+            console.error("Error checking publish policy:", error)
+            publishPolicy = { allowed: false }
+        }
         const salon = await prisma.salon.create({
             data: {
                 name: salonName,
@@ -927,9 +934,9 @@ export async function getRecentPosts(page: number = 1, filters: {
             }
 
             if (Object.keys(salonConditions).length > 0) {
-                // Összefésülés, NEM felülírás: a láthatósági feltételeknek a szűrt
-                // lekérdezéseknél is érvényben kell maradniuk.
-                where.salon = { ...PUBLIC_SALON_WHERE, ...salonConditions }
+                // AND szerkezet, NEM spread: így egy jövőbeli szalon-szűrő sem írhatja
+                // felül némán a láthatósági feltételeket egy esetleges kulcsütközéskor.
+                where.salon = { AND: [PUBLIC_SALON_WHERE, salonConditions] }
             }
         }
 
@@ -1097,13 +1104,16 @@ export async function sendMessage(data: {
     }
     const content = requireNonEmptyText(data.content, "Üzenet")
 
-    // Szalon-kontextusú üzenet csak látható szalonnak küldhető.
+    // Szalon-kontextusú üzenet csak látható szalonnak küldhető — kivéve a szalon
+    // tulajdonosát, akinek a meglévő ügyfél-beszélgetéseit akkor is kezelnie kell
+    // tudnia (pl. válaszolnia), ha a szalon időközben nem publikusan látható.
     if (data.salonId) {
         const salon = await prisma.salon.findUnique({
             where: { id: data.salonId },
-            select: { isActive: true, isPublished: true, publishBlockedReason: true },
+            select: { ownerId: true, isActive: true, isPublished: true, publishBlockedReason: true },
         })
-        if (!salon || !isSalonPubliclyVisible(salon)) {
+        const isOwner = salon?.ownerId === sessionUserId
+        if (!salon || (!isOwner && !isSalonPubliclyVisible(salon))) {
             throw new Error("Ez a szalon jelenleg nem érhető el.")
         }
     }

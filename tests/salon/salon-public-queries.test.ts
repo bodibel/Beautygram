@@ -64,7 +64,7 @@ vi.mock("@/lib/booking/booking-policy", () => ({
     validateBookingRequestFields: vi.fn(() => ({ allowed: true })),
 }))
 
-import { createBooking, getAllSalons, getPublicSalonData, getRecentPosts, getRecentSalons, sendMessage } from "../../lib/actions/salon"
+import { createBooking, getAllSalons, getFeaturedSalons, getPublicSalonData, getRecentPosts, getRecentSalons, sendMessage } from "../../lib/actions/salon"
 
 /** Minden publikus lekérdezésnek mindhárom láthatósági feltételt tartalmaznia kell. */
 function expectPublicFilter(where: Record<string, unknown>) {
@@ -95,6 +95,23 @@ describe("publikus szalon-lekérdezések láthatósági szűrése", () => {
         expectPublicFilter(mocks.prisma.salon.findMany.mock.calls[0][0].where)
     })
 
+    it("getFeaturedSalons prémium lekérdezése a teljes publikus szűrőt használja", async () => {
+        await getFeaturedSalons({})
+
+        const where = mocks.prisma.salon.findMany.mock.calls[0][0].where
+        expectPublicFilter(where)
+    })
+
+    it("getFeaturedSalons népszerű-feltöltő lekérdezése is a teljes publikus szűrőt használja", async () => {
+        await getFeaturedSalons({})
+
+        // A prémium lekérdezés üres tömböt ad vissza a mock miatt, ezért a feltöltő
+        // (népszerű) lekérdezés is lefut — ez a második findMany hívás.
+        expect(mocks.prisma.salon.findMany.mock.calls.length).toBe(2)
+        const where = mocks.prisma.salon.findMany.mock.calls[1][0].where
+        expectPublicFilter(where)
+    })
+
     it("getPublicSalonData a teljes publikus szűrőt használja a slug mellett", async () => {
         await getPublicSalonData("teszt-szalon")
 
@@ -121,18 +138,21 @@ describe("publikus szalon-lekérdezések láthatósági szűrése", () => {
 
         const where = mocks.prisma.post.findMany.mock.calls[0][0].where
         // Ezt a tesztet kellett volna elkapnia annak a hibának, ahol a kategória-szűrés
-        // felülírta (nem összefésülte) a láthatósági feltételeket.
-        expectPublicFilter(where.salon)
-        expect(where.salon).toMatchObject({ categories: { hasSome: ["haj"] } })
+        // felülírta (nem összefésülte) a láthatósági feltételeket. Az AND szerkezet miatt
+        // a láthatósági feltételek és a szalon-szűrők külön tagként szerepelnek.
+        expect(where.salon.AND).toHaveLength(2)
+        expectPublicFilter(where.salon.AND[0])
+        expect(where.salon.AND[1]).toMatchObject({ categories: { hasSome: ["haj"] } })
     })
 
     it("getRecentPosts hely-szűrő (lat/lng/radius) mellett is megőrzi a láthatósági feltételeket", async () => {
         await getRecentPosts(1, { lat: 47.4979, lng: 19.0402, radius: 10 })
 
         const where = mocks.prisma.post.findMany.mock.calls[0][0].where
-        expectPublicFilter(where.salon)
-        expect(where.salon).toHaveProperty("lat")
-        expect(where.salon).toHaveProperty("lng")
+        expect(where.salon.AND).toHaveLength(2)
+        expectPublicFilter(where.salon.AND[0])
+        expect(where.salon.AND[1]).toHaveProperty("lat")
+        expect(where.salon.AND[1]).toHaveProperty("lng")
     })
 })
 
