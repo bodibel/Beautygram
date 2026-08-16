@@ -123,7 +123,32 @@ A `Salon` három, egymástól független jelzőt használ, mindegyiknek pontosan
 
 Egy szalon akkor és csak akkor látható a látogatóknak, ha mindhárom feltétel teljesül. A láthatóság egyetlen helyen van definiálva: [`lib/salon-visibility.ts`](lib/salon-visibility.ts). Minden publikus lekérdezésnek a `PUBLIC_SALON_WHERE` töredéket kell használnia.
 
-A `SubscriptionConfig.billingEnabled` a fizetési fázisok fő kapcsolója. Amíg `false` (1. fázis), sem az előfizetés-lejáratás, sem a csomagkorlátok nem érvényesülnek, és minden szalon ingyenesen publikálható.
+#### Publikálási korlátok és fázisok
+
+A termék három fázisban vezeti be a fizetős publikálást. A váltás adminból történik, kódmódosítás nélkül: **Admin → Beállítások → Publikálási korlátok**.
+
+| Beállítás | Jelentés | 1. fázis | 2. fázis | 3. fázis |
+| --- | --- | --- | --- | --- |
+| `billingEnabled` | Fő kapcsoló | `false` | `true` | `true` |
+| `freeSalonSlots` | Ingyenes szalonhelyek szolgáltatónként | – | 1 | 1 |
+| `freeSlotTrialDays` | Az ingyenes hely élettartama napokban, 0 = korlátlan | – | 0 | X |
+| `gracePeriodDays` | Türelmi idő a szigorítás után | – | 30 | 30 |
+
+A `billingEnabled` bekapcsolásakor rögzül a `billingEnabledAt`, és ettől számít a türelmi idő. Alatta még mindenki publikálhat; a lejárta után az `/api/cron/enforce-publishing-quota` cron szolgáltatónként a legrégebben publikált szalonokat hagyja a kereten belül, a többire `publishBlockedReason = "QUOTA"` kerül.
+
+**A kvóta soha nem írja az `isPublished` mezőt** — az a tulajdonos szándékának mezője. Így a szolgáltató látja, hogy nem ő vette le a szalont, és a keret bővítése vagy fizetés után a szalon magától visszatér.
+
+A fizetési szolgáltató **még nincs eldöntve**. A beillesztési pont a `hasActivePaidSubscription()` függvény a [`lib/salon-publishing.ts`](lib/salon-publishing.ts)-ben: ma a `Subscription` rekord `plan`/`status` mezőiből dönt, és amikor a fizetés bekerül, elég ezt az egy függvényt átírni.
+
+#### Cron feladatok
+
+| Végpont | Mit csinál | Javasolt időzítés |
+| --- | --- | --- |
+| `/api/cron/expire-free-salons` | Lejárt FREE szalonok publikálásának tiltása | `0 3 * * *` |
+| `/api/cron/enforce-publishing-quota` | A keret feletti szalonok tiltása | `0 4 * * *` |
+| `/api/cron/subscription-reminders` | Lejárat előtti emlékeztető email | `0 9 * * *` |
+
+Mindhárom `CRON_SECRET`-tel hívható, és mindhárom no-op, amíg a `billingEnabled` ki van kapcsolva.
 
 ---
 
