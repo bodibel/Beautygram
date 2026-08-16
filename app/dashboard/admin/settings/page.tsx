@@ -3,6 +3,7 @@
 import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CategoryManager } from "@/components/admin/CategoryManager"
+import { BillingConfigManager } from "@/components/admin/BillingConfigManager"
 
 export default function AdminSettingsPage() {
     return (
@@ -18,6 +19,8 @@ export default function AdminSettingsPage() {
                             <p className="text-muted-foreground">Itt lehet kezelni az oldal globális beállításait.</p>
                         </CardContent>
                     </Card>
+
+                    <BillingConfigManager />
 
                     <CategoryManager />
                 </div>
