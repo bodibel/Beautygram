@@ -34,10 +34,15 @@ export function BillingConfigManager() {
   const [billingEnabledAt, setBillingEnabledAt] = useState<Date | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  // Ha a betöltés nem sikerült, a form az alapértékeken marad, ami
+  // megkülönböztethetetlen a "még nincs mentett konfiguráció" esettől. Mentéssel
+  // ilyenkor felül lehetne írni az éles beállításokat — ezért tiltjuk a mentést.
+  const [loadError, setLoadError] = useState(false)
 
   const load = useCallback(async () => {
     try {
       setLoading(true)
+      setLoadError(false)
       const result = await getSubscriptionConfigAdmin()
       if (result.success && result.config) {
         setForm({
@@ -47,9 +52,13 @@ export function BillingConfigManager() {
           gracePeriodDays: result.config.gracePeriodDays,
         })
         setBillingEnabledAt(result.config.billingEnabledAt)
+      } else {
+        setLoadError(true)
+        toast.error(result.error || "Nem sikerült a beállítások betöltése.")
       }
     } catch (error) {
       console.error("Számlázási beállítások betöltési hiba:", error)
+      setLoadError(true)
       toast.error("Nem sikerült a beállítások betöltése.")
     } finally {
       setLoading(false)
@@ -167,7 +176,20 @@ export function BillingConfigManager() {
               </div>
             </div>
 
-            <Button onClick={handleSave} disabled={saving} className="rounded-full font-bold">
+            {loadError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                <p className="font-bold">A beállítások betöltése nem sikerült.</p>
+                <p className="mt-1">
+                  A megjelenő értékek alapértelmezettek, nem a mentett beállítások. A mentés le van tiltva,
+                  hogy ne írjuk felül véletlenül az élő konfigurációt.
+                </p>
+                <Button onClick={load} variant="outline" className="mt-3 rounded-full font-bold">
+                  Újrapróbálom
+                </Button>
+              </div>
+            )}
+
+            <Button onClick={handleSave} disabled={saving || loadError} className="rounded-full font-bold">
               {saving ? "Mentés..." : "Mentés"}
             </Button>
           </>
