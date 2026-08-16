@@ -791,10 +791,15 @@ export async function updateSubscriptionConfig(
         const updateData: Record<string, unknown> = { ...data }
 
         // A türelmi idő kezdete csak a kapcsoló állapotváltásakor íródik.
+        // Ha már bekapcsolt állapotban módosítanak más mezőt, a billingEnabledAt
+        // érintetlen marad — különben a türelmi idő minden mentéssel újraindulna.
+        let turelmiIdoValtozott = false
         if (data.billingEnabled === true && !existing?.billingEnabled) {
             updateData.billingEnabledAt = new Date()
+            turelmiIdoValtozott = true
         } else if (data.billingEnabled === false && existing?.billingEnabled) {
             updateData.billingEnabledAt = null
+            turelmiIdoValtozott = true
         }
 
         if (existing) {
@@ -820,7 +825,16 @@ export async function updateSubscriptionConfig(
                     freeSlotTrialDays: existing?.freeSlotTrialDays ?? null,
                     gracePeriodDays: existing?.gracePeriodDays ?? null,
                 },
-                uj: updateData as Record<string, unknown>,
+                // A metaadat csak JSON-biztos primitíveket tartalmazhat, ezért a
+                // beküldött mezőket kifejezetten soroljuk fel, nem az update-objektumot
+                // adjuk át (abban Date is lehet, amit a Prisma.InputJsonValue nem fogad el).
+                uj: {
+                    billingEnabled: data.billingEnabled ?? null,
+                    freeSalonSlots: data.freeSalonSlots ?? null,
+                    freeSlotTrialDays: data.freeSlotTrialDays ?? null,
+                    gracePeriodDays: data.gracePeriodDays ?? null,
+                },
+                turelmiIdoUjraindult: turelmiIdoValtozott,
             },
             ...(await getAuditActionContext()),
         })
