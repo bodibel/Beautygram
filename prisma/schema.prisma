@@ -234,6 +234,20 @@ model SubscriptionConfig {
   // 1. fázis (felfutás): false. 2. fázistól: true.
   billingEnabled Boolean @default(false)
 
+  // Mikor kapcsolták be a számlázást. A türelmi idő ebből számolódik.
+  // Írója KIZÁRÓLAG az admin konfigurációs action, a kapcsoló felfutó élén.
+  billingEnabledAt DateTime?
+
+  // Hány szalont publikálhat ingyen egy szolgáltató.
+  freeSalonSlots Int @default(1)
+
+  // Meddig tart az ingyenes hely, napokban. 0 = korlátlan ideig.
+  // 2. fázis: 0. 3. fázis: a kívánt napszám.
+  freeSlotTrialDays Int @default(0)
+
+  // Türelmi idő a szabály szigorításakor, napokban.
+  gracePeriodDays Int @default(30)
+
   // Stripe Price ID-k (admin adja meg)
   standardPriceHufId String?
   standardPriceEurId String?
