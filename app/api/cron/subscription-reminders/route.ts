@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/db"
 import { SubscriptionPlan, SubscriptionStatus } from "@prisma/client"
 import { sendSubscriptionExpiryWarning } from "@/lib/mail"
+import { getSubscriptionConfig } from "@/lib/subscription"
 
 export async function GET(req: NextRequest) {
   // Fail-closed: ha a titok nincs beállítva, a végpont nem hívható.
@@ -27,6 +28,17 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // 1. fázis: a lejáratás ki van kapcsolva, tehát a figyelmeztetés félrevezető lenne.
+    const config = await getSubscriptionConfig()
+    if (!config.billingEnabled) {
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason: "A számlázás ki van kapcsolva.",
+        timestamp: new Date().toISOString(),
+      })
+    }
+
     const now = new Date()
     // 3 nap múlva lejáró időszak: most + 3 nap ± 12 óra ablakban
     const windowStart = new Date(now.getTime() + 2.5 * 24 * 60 * 60 * 1000)
