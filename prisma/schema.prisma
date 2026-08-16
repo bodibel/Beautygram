@@ -138,7 +138,8 @@ model Salon {
 
   // Rendszer általi publikálási tiltás.
   // Írója KIZÁRÓLAG a rendszer: előfizetés lejárat, adminisztrátori intézkedés.
-  // Értékei: null | "BILLING" | "ADMIN"
+  // Értékei: null | "BILLING" (lejárt előfizetés) | "QUOTA" (betelt ingyenes keret)
+  //           | "ADMIN" (adminisztrátori intézkedés)
   publishBlockedReason String?
   publishBlockedAt     DateTime?
 
