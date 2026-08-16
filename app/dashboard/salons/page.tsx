@@ -8,6 +8,7 @@ import { MapPin, Plus, Star, Store } from "lucide-react"
 
 import { MainLayout } from "@/components/layout/main-layout"
 import { Button } from "@/components/ui/button"
+import { QuotaIndicator } from "@/components/salons/quota-indicator"
 import { SalonWizard } from "@/components/wizard/SalonWizard"
 import { getUserSalons } from "@/lib/actions/salon"
 import { useAuth } from "@/lib/auth-context"
@@ -77,13 +78,16 @@ export default function SalonsPage() {
                                 Itt hozhatsz létre szalont, és innen tudsz belépni a meglévő szalonok kezelőfelületére.
                             </p>
                         </div>
-                        <Button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="h-12 rounded-full px-6 font-bold"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Új szalon
-                        </Button>
+                        <div className="flex flex-col items-start gap-3 sm:items-end">
+                            <QuotaIndicator />
+                            <Button
+                                onClick={() => setIsCreateModalOpen(true)}
+                                className="h-12 rounded-full px-6 font-bold"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Új szalon
+                            </Button>
+                        </div>
                     </div>
                 </section>
 
@@ -129,7 +133,7 @@ export default function SalonsPage() {
                                         <div className="absolute left-4 top-4">
                                             {salon.publishBlockedReason ? (
                                                 <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700 shadow-sm">
-                                                    Tiltva
+                                                    {salon.publishBlockedReason === "QUOTA" ? "Kereten kívül" : "Tiltva"}
                                                 </span>
                                             ) : salon.isPublished ? (
                                                 <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-700 shadow-sm">

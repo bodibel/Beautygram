@@ -14,9 +14,13 @@ type SalonPublishToggleProps = {
 }
 
 function blockedText(reason: string) {
-  return reason === "BILLING"
-    ? "A publikálás előfizetési okból le van tiltva."
-    : "A publikálás adminisztrátori döntés miatt le van tiltva."
+  if (reason === "BILLING") {
+    return "A publikálás előfizetési okból le van tiltva."
+  }
+  if (reason === "QUOTA") {
+    return "Betelt az ingyenesen publikálható szalonok kerete. Vegyél le egy másik szalont, vagy bővítsd a keretet."
+  }
+  return "A publikálás adminisztrátori döntés miatt le van tiltva."
 }
 
 export function SalonPublishToggle({

@@ -7,7 +7,7 @@ import { existsSync } from "fs"
 import { join } from "path"
 import prisma from "@/lib/db"
 import { AUDIT_ACTIONS, getAuditActionContext, writeAuditLog } from "@/lib/audit-log"
-import { canPublishSalon, type PublishPolicyResult } from "@/lib/salon-publishing"
+import { canPublishSalon, getSalonQuotaStatus, type PublishPolicyResult } from "@/lib/salon-publishing"
 import { generateUniqueSlug } from "@/lib/slug"
 import { PUBLIC_SALON_WHERE, isSalonPubliclyVisible } from "@/lib/salon-visibility"
 import { requireSession } from "@/lib/auth-utils"
@@ -1591,5 +1591,17 @@ export async function createReview(data: {
     } catch (error) {
         console.error("Error creating review:", error)
         throw error
+    }
+}
+
+/** A bejelentkezett szolgáltató kvóta-állapota a szalonlista fejlécéhez. */
+export async function getMyQuotaStatus() {
+    const sessionUserId = await requireSession()
+    try {
+        return await getSalonQuotaStatus(sessionUserId)
+    } catch (error) {
+        // A felület inkább ne mutasson semmit, mint pontatlan keretet.
+        console.error("Kvóta-állapot lekérdezési hiba:", error)
+        return null
     }
 }
