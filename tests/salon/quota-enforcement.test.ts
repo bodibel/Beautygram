@@ -140,6 +140,24 @@ describe("enforcePublishingQuota", () => {
         expect(mocks.prisma.salon.updateMany.mock.calls[0][0].where.id.in).toEqual(["regi"])
     })
 
+    it("a lejárt próbaidejű szalon felszabadítja a helyét, a próbaidőn belüli szalon nem kap tiltást", async () => {
+        // Két szalon kell ahhoz, hogy megkülönböztessük: a lejárt próbaidejű
+        // szalon ténylegesen átadja-e a felszabaduló ingyenes helyet a
+        // következő szalonnak, nem csak önmagát tiltja. Egyetlen szalonnal
+        // ez a különbség nem látszana (lásd az előző tesztet).
+        mocks.getSubscriptionConfig.mockResolvedValue(config({ freeSalonSlots: 1, freeSlotTrialDays: 30 }))
+        mocks.prisma.salon.findMany.mockResolvedValue([
+            salon("regi-lejart", "owner-1", "2026-01-10T00:00:00.000Z"),
+            salon("uj-probaidoben", "owner-1", "2026-05-15T00:00:00.000Z"),
+        ])
+        mocks.prisma.salon.updateMany.mockResolvedValue({ count: 1 })
+
+        await expect(enforcePublishingQuota()).resolves.toBe(1)
+
+        const call = mocks.prisma.salon.updateMany.mock.calls[0][0]
+        expect(call.where.id.in).toEqual(["regi-lejart"])
+    })
+
     it("naplózza a tiltott szalonokat", async () => {
         mocks.getSubscriptionConfig.mockResolvedValue(config())
         mocks.prisma.salon.findMany.mockResolvedValue([
