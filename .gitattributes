@@ -1,0 +1,6 @@
+# A Prisma a migrációs fájlok bájtjaiból számol ellenőrzőösszeget, és eltérés
+# esetén a "migration was modified after it was applied" hibával leáll, adatbázis
+# újraépítést követelve. Windows alatt a core.autocrlf=true minden checkoutnál
+# CRLF-re konvertálna, ami ágváltás vagy friss klón után blokkolná a fejlesztést.
+# Ezért a migrációs SQL minden platformon LF sorvégű marad.
+*.sql text eol=lf
