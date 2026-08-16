@@ -90,6 +90,17 @@ Expected: `✔ Generated Prisma Client (v6.19.2)`
 
 - [ ] **Step 6: Backfill SQL hozzáadása a migrációhoz**
 
+> **Utólagos tanulság — ezt a mintát ne kövesd új tervekben.** Ez a lépés egy már
+> alkalmazott migrációs fájlt bővít. A Prisma az alkalmazáskor rögzíti a fájl
+> ellenőrzőösszegét, ezért a fájl utólagos szerkesztése után minden későbbi
+> `prisma migrate dev` hívás `migration was modified after it was applied` hibával
+> leáll, és adatbázis-újraépítést követel. Ez a C csomag végrehajtását ténylegesen
+> blokkolta, és a `_prisma_migrations` tábla ellenőrzőösszegének kézi frissítésével
+> kellett feloldani.
+>
+> **Helyes minta:** a backfillt eleve a migrációs fájlba kell írni, mielőtt a
+> `prisma migrate dev` lefut, vagy külön követő migrációba kell tenni.
+
 Nyisd meg a most generált `prisma/migrations/<timestamp>_add_salon_publishing_state/migration.sql` fájlt, és a végére illeszd be:
 
 ```sql
